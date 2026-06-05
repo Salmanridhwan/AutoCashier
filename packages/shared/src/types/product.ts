@@ -11,6 +11,9 @@ export interface Product {
   stock: number;
   branch_id?: string | null;
   ai_label?: string | null;
+  ai_class_name?: string | null;
+  ocr_keywords?: string[];
+  ai_enabled?: boolean;
   is_active?: boolean;
   created_at?: string;
 }
