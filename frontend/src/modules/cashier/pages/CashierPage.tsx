@@ -4,12 +4,9 @@ import { useLocation } from '@/shared/context/LocationContext';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/shared/components/ui/dialog';
-import {
   Camera, CameraOff, Plus, Minus, Trash2, Search, ShoppingCart, Loader2,
-  CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, User, Tag, Coins, QrCode,
-  LogOut, Sparkles, RefreshCw, X, ScanLine,
+  CheckCircle2, ArrowLeft, ArrowRight, User, Tag, Coins, QrCode,
+  LogOut, Sparkles, RefreshCw, X, ScanLine, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,12 +16,6 @@ interface MemberInfo { id: string; name: string; phone: string; }
 interface Promo {
   id: string; title?: string; code?: string;
   discount_type: string; discount_value: number; max_discount?: number | null; min_purchase?: number | null;
-}
-interface ConfirmationData {
-  product: { id: string; name: string; price: number; ai_class_name: string; image_url?: string | null };
-  confidence: number;
-  ocr: { passed: boolean; reason: string; ocr_text: string; score: number };
-  scanCropUrl?: string | null;
 }
 interface SuccessOverlayData {
   product: { id: string; name: string; price: number; ai_class_name: string; image_url?: string | null };
@@ -46,11 +37,11 @@ interface ProductImage {
 type Step = 'scan' | 'cart' | 'payment' | 'receipt';
 
 const RECEIPT_SECONDS = 60;
-const SUCCESS_OVERLAY_SECONDS = 5;
-const SCAN_VOTE_WINDOW_SIZE = 5;
-const REQUIRED_ACCEPT_VOTES = 5;
+const SUCCESS_OVERLAY_SECONDS = 2;
+const SCAN_VOTE_WINDOW_SIZE = 3;
+const REQUIRED_ACCEPT_VOTES = 3;
 const VOTE_MAX_AGE_MS = 4500;
-const MIN_VOTE_AVERAGE_CONFIDENCE = 0.86;
+const MIN_VOTE_AVERAGE_CONFIDENCE = 0.70;
 const MIN_STABLE_BBOX_IOU = 0.35;
 const SCANNER_ROI_OUTPUT_SIZE = 640;
 const rp = (n: number) => 'Rp ' + Math.round(n).toLocaleString('id-ID');
@@ -162,6 +153,7 @@ export default function CashierPage() {
 
   // POS state
   const [cart, setCart] = React.useState<CartItem[]>([]);
+  const [isScanCartOpen, setIsScanCartOpen] = React.useState(true);
   const [member, setMember] = React.useState<MemberInfo | null>(null);
   const [memberPhone, setMemberPhone] = React.useState('');
   const [isCheckingMember, setIsCheckingMember] = React.useState(false);
@@ -188,9 +180,8 @@ export default function CashierPage() {
   const [isBackgroundFrame, setIsBackgroundFrame] = React.useState(true);
   const [availableCameras, setAvailableCameras] = React.useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = React.useState('');
-  const [scanStatus, setScanStatus] = React.useState<'SCANNING' | 'ACCEPT' | 'CONFIRM' | 'REJECT' | 'STANDBY'>('STANDBY');
+  const [scanStatus, setScanStatus] = React.useState<'SCANNING' | 'ACCEPT' | 'REJECT' | 'STANDBY'>('STANDBY');
   const [feedback, setFeedback] = React.useState('');
-  const [confirmationModal, setConfirmationModal] = React.useState<ConfirmationData | null>(null);
   const [successOverlay, setSuccessOverlay] = React.useState<SuccessOverlayData | null>(null);
   const [successCountdown, setSuccessCountdown] = React.useState(SUCCESS_OVERLAY_SECONDS);
   const scanVotesRef = React.useRef<ScanVote[]>([]);
@@ -319,8 +310,6 @@ export default function CashierPage() {
       verified: (
         matchingVotes.length >= REQUIRED_ACCEPT_VOTES
         && averageConfidence >= MIN_VOTE_AVERAGE_CONFIDENCE
-        && stableBboxVotes >= REQUIRED_ACCEPT_VOTES
-        && stableCropVotes >= REQUIRED_ACCEPT_VOTES
       ),
     };
   };
@@ -347,7 +336,7 @@ export default function CashierPage() {
   };
 
   const handleScanResult = (result: any) => {
-    const { decision, product, confidence, ocr, bbox } = result;
+    const { decision, product, confidence, bbox } = result;
     const classifierClass = result?.classification?.class_name;
     const isBackground = classifierClass === 'background';
     setIsBackgroundFrame(isBackground);
@@ -359,10 +348,14 @@ export default function CashierPage() {
       return;
     }
 
-    if ((decision === 'ACCEPT' || decision === 'NEED_CONFIRMATION') && product) {
-      showDetectionBox(bbox, decision === 'ACCEPT' ? 'ACCEPT' : 'CONFIRM', product.name);
-    }
-    if (decision === 'ACCEPT' && product) {
+    const isAutoAccepted = (
+      product
+      && (decision === 'ACCEPT' || decision === 'NEED_CONFIRMATION')
+      && Number(confidence) >= MIN_VOTE_AVERAGE_CONFIDENCE
+    );
+
+    if (isAutoAccepted) {
+      showDetectionBox(bbox, 'ACCEPT', product.name);
       setScanStatus('ACCEPT');
       const voteResult = registerAcceptVote(product.id, confidence, bbox, detection?.detected === true);
       if (voteResult.verified) {
@@ -379,13 +372,6 @@ export default function CashierPage() {
       } else {
         setFeedback(`Memastikan ${product.name} (${Math.min(voteResult.votes, REQUIRED_ACCEPT_VOTES)}/${REQUIRED_ACCEPT_VOTES})`);
       }
-    } else if (decision === 'NEED_CONFIRMATION' && product) {
-      resetScannerVote();
-      setScanStatus('CONFIRM');
-      const scanCropUrl = detection?.detected === true
-        ? createCroppedPreview(canvasRef.current, bbox)
-        : null;
-      setConfirmationModal({ product, confidence, ocr, scanCropUrl });
     } else if (decision === 'REJECT') {
       resetScannerVote();
       setScanStatus('REJECT');
@@ -394,7 +380,7 @@ export default function CashierPage() {
 
   const captureFrame = async () => {
     if (!videoRef.current || !canvasRef.current || !camWrapRef.current || !roiFrameRef.current
-      || confirmationModal || successOverlay || isProcessingFrame.current || !cameraActive) return;
+      || successOverlay || isProcessingFrame.current || !cameraActive) return;
     try {
       isProcessingFrame.current = true;
       setIsDetecting(true);
@@ -451,12 +437,12 @@ export default function CashierPage() {
 
   React.useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
-    if (step === 'scan' && cameraActive && !confirmationModal && !successOverlay) {
+    if (step === 'scan' && cameraActive && !successOverlay) {
       interval = setInterval(captureFrame, 500);
     }
     return () => { if (interval) clearInterval(interval); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, cameraActive, confirmationModal, successOverlay, currentLocation]);
+  }, [step, cameraActive, successOverlay, currentLocation]);
 
   // ─── Cart ───────────────────────────────────────────────────────────────────
   const loadFrontImage = async (productId: string, fallbackUrl?: string | null) => {
@@ -694,7 +680,9 @@ export default function CashierPage() {
 
   // ─── STEP: SCAN ───────────────────────────────────────────────────────────────
   const renderScan = () => (
-    <main className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,4fr)_minmax(260px,1fr)] gap-0 overflow-hidden">
+    <main className={`relative flex-1 grid grid-cols-1 gap-0 overflow-hidden ${
+      isScanCartOpen ? 'lg:grid-cols-[minmax(0,4fr)_minmax(260px,1fr)]' : 'lg:grid-cols-1'
+    }`}>
       {/* Camera (80%) */}
       <section ref={camWrapRef} className="relative bg-black flex items-center justify-center overflow-hidden">
         {cameraActive ? (
@@ -707,6 +695,22 @@ export default function CashierPage() {
           </div>
         )}
         <canvas ref={canvasRef} className="hidden" />
+
+        {!isScanCartOpen && (
+          <button
+            type="button"
+            onClick={() => setIsScanCartOpen(true)}
+            className="absolute right-4 top-4 z-30 flex items-center gap-2 rounded-full bg-white/95 px-3.5 py-2.5 text-sm font-bold text-gray-900 shadow-lg backdrop-blur-sm transition hover:bg-white"
+            aria-label="Buka keranjang"
+          >
+            <ChevronLeft className="size-4 text-gray-500" />
+            <ShoppingCart className="size-4 text-indigo-600" />
+            Keranjang
+            <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs text-white">
+              {cart.reduce((a, i) => a + i.quantity, 0)}
+            </span>
+          </button>
+        )}
 
         {/* Scan frame overlay */}
         {cameraActive && (
@@ -725,7 +729,6 @@ export default function CashierPage() {
                 ].map((c, i) => (
                   <span key={i} className={`absolute w-10 h-10 transition-colors duration-300 ${
                     scanStatus === 'ACCEPT' ? 'border-emerald-400'
-                    : scanStatus === 'CONFIRM' ? 'border-amber-400'
                     : 'border-white/80'} ${c}`} />
                 ))}
                 <span className="roi-scan-beam pointer-events-none absolute inset-x-4 top-0 z-10 h-[3px] rounded-full bg-gradient-to-r from-transparent via-blue-300 to-transparent shadow-[0_0_8px_rgba(96,165,250,0.7)]" />
@@ -737,10 +740,6 @@ export default function CashierPage() {
               {scanStatus === 'ACCEPT' ? (
                 <div key={feedback} className="flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-emerald-500 text-white text-lg font-bold shadow-xl" style={{ animation: 'posPop 0.3s ease-out' }}>
                   <CheckCircle2 className="size-6" /> {feedback || 'Produk terdeteksi'}
-                </div>
-              ) : scanStatus === 'CONFIRM' ? (
-                <div className="flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-amber-500 text-white text-lg font-bold shadow-xl animate-pulse">
-                  <AlertTriangle className="size-6" /> Perlu konfirmasi…
                 </div>
               ) : isDetecting && !isBackgroundFrame ? (
                 <div className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
@@ -773,12 +772,22 @@ export default function CashierPage() {
       </section>
 
       {/* Cart (20%) */}
-      <section className="flex flex-col bg-white border-l border-gray-200 min-h-0">
+      {isScanCartOpen && <section className="flex flex-col bg-white border-l border-gray-200 min-h-0">
         <div className="px-3 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
           <h2 className="font-bold text-sm text-gray-900 flex items-center gap-1.5"><ShoppingCart className="size-4 text-indigo-600" /> Keranjang</h2>
-          <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-            {cart.reduce((a, i) => a + i.quantity, 0)} item
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+              {cart.reduce((a, i) => a + i.quantity, 0)} item
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsScanCartOpen(false)}
+              className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Tutup keranjang"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2.5 min-h-0">
@@ -834,7 +843,7 @@ export default function CashierPage() {
             Selesai Belanja <ArrowRight className="ml-1.5 size-4" />
           </Button>
         </div>
-      </section>
+      </section>}
     </main>
   );
 
@@ -1025,8 +1034,8 @@ export default function CashierPage() {
       {step === 'receipt' && renderReceipt()}
 
       {successOverlay && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 p-6 backdrop-blur-sm">
-          <div className="success-detection-card relative w-full max-w-sm overflow-hidden rounded-3xl border border-emerald-300/40 bg-white p-7 text-center shadow-2xl">
+        <div className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div className="success-detection-card relative w-full max-w-sm overflow-hidden rounded-3xl border border-emerald-200 bg-white/95 p-7 text-center shadow-2xl">
             <div className="success-detection-ring mx-auto mb-4 flex size-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
               <CheckCircle2 className="size-11" />
             </div>
@@ -1048,47 +1057,6 @@ export default function CashierPage() {
         </div>
       )}
 
-      {/* NEED_CONFIRMATION modal (during scan) */}
-      <Dialog open={confirmationModal !== null} onOpenChange={() => {}}>
-        {confirmationModal && (
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <div className="mx-auto p-3 rounded-full bg-amber-100 text-amber-600 w-fit mb-2"><AlertTriangle className="size-6" /></div>
-              <DialogTitle className="text-center">Konfirmasi Produk</DialogTitle>
-              <DialogDescription className="text-center">AI ragu — mohon pastikan produknya benar.</DialogDescription>
-            </DialogHeader>
-            <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-3">
-              <ProductThumbnail
-                imageUrl={confirmationModal.scanCropUrl || confirmationModal.product.image_url}
-                name={confirmationModal.product.name}
-                className="size-16 rounded-xl border border-gray-200 bg-white"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-lg font-bold text-gray-900">{confirmationModal.product.name}</p>
-                <p className="text-sm text-gray-500">{rp(confirmationModal.product.price)}</p>
-              </div>
-              <span className="text-2xl font-extrabold text-amber-500">{(confirmationModal.confidence * 100).toFixed(0)}%</span>
-            </div>
-            <DialogFooter className="flex gap-2">
-              <Button variant="outline" className="flex-1 h-12"
-                onClick={() => { setConfirmationModal(null); resetScannerVote(); setScanStatus('SCANNING'); }}>
-                Salah, ulang
-              </Button>
-              <Button className="flex-1 h-12 bg-indigo-600 hover:bg-indigo-700"
-                onClick={() => {
-                  completeDetectedProduct(
-                    confirmationModal.product,
-                    confirmationModal.confidence,
-                    confirmationModal.scanCropUrl,
-                  );
-                  setConfirmationModal(null);
-                }}>
-                Benar, tambah
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        )}
-      </Dialog>
     </div>
   );
 }

@@ -217,7 +217,7 @@
 }
 
 .success-detection-progress {
-  animation: successDetectionProgress 5s linear forwards;
+  animation: successDetectionProgress 2s linear forwards;
 }
 
 .roi-scan-beam {

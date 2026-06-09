@@ -4,135 +4,40 @@ from scanner_decision import decide_scan
 
 
 class ScannerDecisionTests(unittest.TestCase):
-    def test_high_confidence_non_similar_product_is_accepted(self):
+    def test_product_at_threshold_is_accepted(self):
         self.assertEqual(
-            decide_scan("prima", 0.97, 0.70, False, False, False),
-            ("ACCEPT", "high_confidence"),
+            decide_scan("prima", 0.70, 0.01, False, False, False),
+            ("ACCEPT", "confidence_threshold"),
         )
 
-    def test_lowered_visual_threshold_accepts_clear_non_similar_product(self):
+    def test_product_above_threshold_is_accepted(self):
         self.assertEqual(
             decide_scan("prima", 0.88, 0.14, False, False, False),
-            ("ACCEPT", "visual_threshold"),
+            ("ACCEPT", "confidence_threshold"),
         )
 
-    def test_lowered_similar_threshold_still_requires_matching_ocr(self):
+    def test_similar_product_above_threshold_is_accepted(self):
         self.assertEqual(
-            decide_scan("nescafe_cappucino", 0.91, 0.18, True, True, False),
-            ("ACCEPT", "ocr_verified"),
+            decide_scan("nescafe_cappucino", 0.71, 0.01, False, True, False),
+            ("ACCEPT", "confidence_threshold"),
         )
 
-    def test_high_confidence_full_frame_requires_confirmation(self):
+    def test_full_frame_above_threshold_is_accepted(self):
         self.assertEqual(
-            decide_scan("prima", 0.97, 0.70, False, False, False, crop_detected=False),
-            ("NEED_CONFIRMATION", "full_frame_requires_confirmation"),
+            decide_scan("prima", 0.75, 0.01, False, False, False, crop_detected=False),
+            ("ACCEPT", "confidence_threshold"),
         )
 
-    def test_full_frame_with_matching_ocr_requires_confirmation(self):
+    def test_ocr_corrected_product_above_threshold_is_accepted(self):
         self.assertEqual(
-            decide_scan("prima", 0.97, 0.70, True, True, False, crop_detected=False),
-            ("NEED_CONFIRMATION", "full_frame_requires_confirmation"),
+            decide_scan("prima", 0.80, 0.01, True, True, True),
+            ("ACCEPT", "confidence_threshold"),
         )
 
-    def test_full_frame_with_ocr_correction_requires_confirmation(self):
+    def test_product_below_threshold_is_rejected(self):
         self.assertEqual(
-            decide_scan("prima", 0.80, 0.50, True, True, True, crop_detected=False),
-            ("NEED_CONFIRMATION", "full_frame_requires_confirmation"),
-        )
-
-    def test_low_confidence_full_frame_requires_confirmation(self):
-        self.assertEqual(
-            decide_scan("prima", 0.60, 0.20, False, False, False, crop_detected=False),
-            ("NEED_CONFIRMATION", "full_frame_requires_confirmation"),
-        )
-
-    def test_strong_multi_crop_consensus_still_requires_confirmation(self):
-        self.assertEqual(
-            decide_scan(
-                "prima",
-                0.98,
-                0.80,
-                False,
-                False,
-                False,
-                crop_detected=False,
-                consensus_verified=True,
-            ),
-            ("NEED_CONFIRMATION", "full_frame_requires_confirmation"),
-        )
-
-    def test_multi_crop_consensus_still_respects_ocr_correction_guard(self):
-        self.assertEqual(
-            decide_scan(
-                "prima",
-                1.0,
-                1.0,
-                True,
-                True,
-                True,
-                crop_detected=False,
-                consensus_verified=True,
-            ),
-            ("NEED_CONFIRMATION", "full_frame_requires_confirmation"),
-        )
-
-    def test_risky_multi_crop_class_requires_ocr(self):
-        self.assertEqual(
-            decide_scan(
-                "buah_vita",
-                1.0,
-                1.0,
-                False,
-                False,
-                False,
-                crop_detected=False,
-                consensus_verified=True,
-            ),
-            ("NEED_CONFIRMATION", "full_frame_requires_confirmation"),
-        )
-
-    def test_all_confusion_aware_classes_require_ocr_or_confirmation(self):
-        for class_name in (
-            "teh_sosro_kotak",
-            "nabati_coklat",
-            "krice",
-            "pop_mie_ayam_bawang",
-            "buah_vita",
-        ):
-            with self.subTest(class_name=class_name):
-                self.assertEqual(
-                    decide_scan(class_name, 1.0, 1.0, False, False, False),
-                    ("NEED_CONFIRMATION", "moderate_confidence"),
-                )
-
-    def test_similar_product_requires_ocr_or_confirmation(self):
-        self.assertEqual(
-            decide_scan("nescafe_cappucino", 0.96, 0.70, False, True, False),
-            ("NEED_CONFIRMATION", "ocr_mismatch"),
-        )
-
-    def test_similar_product_with_ocr_is_accepted(self):
-        self.assertEqual(
-            decide_scan("nescafe_cappucino", 0.96, 0.70, True, True, False),
-            ("ACCEPT", "ocr_verified"),
-        )
-
-    def test_ocr_correction_requires_confirmation(self):
-        self.assertEqual(
-            decide_scan("prima", 0.80, 0.50, True, True, True),
-            ("NEED_CONFIRMATION", "ocr_correction_requires_confirmation"),
-        )
-
-    def test_high_confidence_ocr_correction_requires_confirmation(self):
-        self.assertEqual(
-            decide_scan("prima", 1.0, 1.0, True, True, True),
-            ("NEED_CONFIRMATION", "ocr_correction_requires_confirmation"),
-        )
-
-    def test_low_gap_is_rejected(self):
-        self.assertEqual(
-            decide_scan("momogi", 0.60, 0.02, False, False, False),
-            ("REJECT", "low_gap_threshold"),
+            decide_scan("momogi", 0.69, 0.90, True, True, False),
+            ("REJECT", "low_confidence"),
         )
 
 
