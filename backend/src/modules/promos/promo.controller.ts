@@ -2,14 +2,24 @@ import { Request, Response } from 'express';
 import * as promoService from '../promos/promo.service.js';
 import { supabaseAdmin, supabase } from '../../config/supabaseClient.js';
 
+function getBranchAdminScope(req: Request): string | undefined {
+  const user = (req as any).user;
+  return user?.role === 'branch_admin' ? user.branch_id : undefined;
+}
+
+function promoErrorStatus(error: any): number {
+  return error === 'FORBIDDEN' ? 403 : 500;
+}
+
 export async function listPromos(req: Request, res: Response) {
-  const result = await promoService.getAllPromos();
+  const result = await promoService.getAllPromos(getBranchAdminScope(req));
   if (!result.ok) return res.status(500).json({ status: 'error', error: result.error });
   return res.json({ status: 'success', data: result.data });
 }
 
 export async function createPromoController(req: Request, res: Response) {
   const { title, code, discount_type, discount_value, min_purchase, expires_at, user_id } = req.body;
+  const branchScope = getBranchAdminScope(req);
   
   if (!code || !discount_value || !discount_type) {
     return res.status(400).json({ status: 'error', error: 'Missing required fields: code, discount_type, discount_value' });
@@ -29,7 +39,7 @@ export async function createPromoController(req: Request, res: Response) {
     per_user_limit: req.body.per_user_limit || null,
     starts_at: req.body.starts_at || null,
     conditions: req.body.conditions || null,
-    scope: req.body.scope || 'ALL',
+    scope: branchScope || req.body.scope || 'ALL',
     is_active: req.body.is_active !== undefined ? req.body.is_active : true,
     target_user_ids: req.body.target_user_ids || [],
   });
@@ -40,14 +50,18 @@ export async function createPromoController(req: Request, res: Response) {
 
 export async function getPromoByIdController(req: Request, res: Response) {
   const { id } = req.params;
-  const result = await promoService.getPromoById(id);
-  if (!result.ok) return res.status(404).json({ status: 'error', error: 'Promo not found' });
+  const result = await promoService.getPromoById(id, getBranchAdminScope(req));
+  if (!result.ok) {
+    const status = result.error === 'FORBIDDEN' ? 403 : 404;
+    return res.status(status).json({ status: 'error', error: status === 403 ? 'FORBIDDEN' : 'Promo not found' });
+  }
   return res.json({ status: 'success', data: result.data });
 }
 
 export async function updatePromoController(req: Request, res: Response) {
   const { id } = req.params;
   const { title, code, discount_type, discount_value } = req.body;
+  const branchScope = getBranchAdminScope(req);
   
   if (!code || !discount_value || !discount_type) {
     return res.status(400).json({ status: 'error', error: 'Missing required fields' });
@@ -66,51 +80,27 @@ export async function updatePromoController(req: Request, res: Response) {
     per_user_limit: req.body.per_user_limit || null,
     starts_at: req.body.starts_at || null,
     conditions: req.body.conditions || null,
-    scope: req.body.scope,
+    scope: branchScope || req.body.scope,
     target_user_ids: req.body.target_user_ids || [],
-  });
+  }, branchScope);
 
-  if (!result.ok) return res.status(500).json({ status: 'error', error: result.error });
+  if (!result.ok) return res.status(promoErrorStatus(result.error)).json({ status: 'error', error: result.error });
   return res.json({ status: 'success', data: result.data });
 }
 
 export async function deletePromoController(req: Request, res: Response) {
   const { id } = req.params;
-  const result = await promoService.deletePromo(id);
-  if (!result.ok) return res.status(500).json({ status: 'error', error: result.error });
+  const result = await promoService.deletePromo(id, getBranchAdminScope(req));
+  if (!result.ok) return res.status(promoErrorStatus(result.error)).json({ status: 'error', error: result.error });
   return res.json({ status: 'success' });
 }
 
 export async function getPromoInsights(req: Request, res: Response) {
   try {
     const client = supabaseAdmin || supabase;
+    const branchScope = getBranchAdminScope(req);
     
-    // Get total used promos (Total Redemption)
-    const { count: usedCount, error: usedErr } = await client
-      .from('member_promos')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_used', true);
-      
-    if (usedErr) throw usedErr;
-    
-    // Get total sent promos
-    const { count: totalCount, error: totalErr } = await client
-      .from('member_promos')
-      .select('*', { count: 'exact', head: true });
-      
-    if (totalErr) throw totalErr;
-    
-    const totalRedemption = usedCount || 0;
-    const totalSent = totalCount || 0;
-    
-    // Calculate reach effectiveness
-    let reachPercentage = 0;
-    if (totalSent > 0) {
-      reachPercentage = Math.round((totalRedemption / totalSent) * 100);
-    }
-    
-    // Fetch recent member promos to show who got what and if it's used
-    const { data: history, error: historyErr } = await client
+    const { data: promoRows, error: promoError } = await client
       .from('member_promos')
       .select(`
         *,
@@ -120,21 +110,20 @@ export async function getPromoInsights(req: Request, res: Response) {
           full_name
         )
       `)
-      .order('created_at', { ascending: false })
-      .limit(10);
-      
-    if (historyErr) {
-      console.error('Error fetching member_promos history:', historyErr);
-    }
+      .order('created_at', { ascending: false });
+    if (promoError) throw promoError;
 
-    // Aggregate by code to find top campaigns
-    const { data: allPromos, error: allErr } = await client
-      .from('member_promos')
-      .select('code, is_used');
-      
+    const scopedPromos = (promoRows || []).filter((promo: any) =>
+      promoService.isPromoVisibleAtBranch(promo, branchScope)
+    );
+    const totalRedemption = scopedPromos.filter((promo: any) => promo.is_used).length;
+    const totalSent = scopedPromos.length;
+    const reachPercentage = totalSent > 0 ? Math.round((totalRedemption / totalSent) * 100) : 0;
+    const history = scopedPromos.slice(0, 10);
+
     const campaignStatsMap: Record<string, { code: string, total: number, used: number }> = {};
-    if (allPromos) {
-      allPromos.forEach((p: any) => {
+    if (scopedPromos) {
+      scopedPromos.forEach((p: any) => {
         const code = p.code.toUpperCase();
         if (!campaignStatsMap[code]) {
           campaignStatsMap[code] = { code, total: 0, used: 0 };
@@ -177,6 +166,7 @@ export async function validatePromoController(req: Request, res: Response) {
   try {
     const client = supabaseAdmin || supabase;
     const { code, total_price, user_id } = req.body;
+    const branchScope = getBranchAdminScope(req);
 
     if (!code || total_price === undefined) {
       return res.status(400).json({ status: 'error', error: 'MISSING_FIELDS' });
@@ -190,6 +180,9 @@ export async function validatePromoController(req: Request, res: Response) {
 
     if (error || !promo) {
       return res.status(404).json({ status: 'error', error: 'PROMO_NOT_FOUND' });
+    }
+    if (!promoService.isPromoVisibleAtBranch(promo, branchScope)) {
+      return res.status(403).json({ status: 'error', error: 'FORBIDDEN' });
     }
 
     if (promo.is_active === false) {

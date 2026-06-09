@@ -109,7 +109,7 @@ export async function fetchBackend(action: string, data: any = {}) {
           // Token expired/invalid — clear session and force re-login
           localStorage.removeItem('autocashier_user');
           localStorage.setItem('isAuthenticated', 'false');
-          window.location.href = '/admin/login';
+          window.location.href = '/login';
           return { status: 'error', message: 'Sesi habis, silakan login ulang' };
         }
         if (!response.ok || json.status !== 'success') {
@@ -172,7 +172,7 @@ export async function fetchBackend(action: string, data: any = {}) {
       }
 
       case 'addInventory': {
-        const response = await fetch(`${BACKEND_URL}/api/admin/inventory`, {
+        const response = await fetch(`${BACKEND_URL}/api/admin/branches/inventory`, {
           method: 'POST',
           headers,
           body: JSON.stringify(data)
@@ -191,7 +191,7 @@ export async function fetchBackend(action: string, data: any = {}) {
 
       case 'updateInventory': {
         const { id, ...updateData } = data;
-        const response = await fetch(`${BACKEND_URL}/api/admin/inventory/${id}`, {
+        const response = await fetch(`${BACKEND_URL}/api/admin/branches/inventory/${id}`, {
           method: 'PUT',
           headers,
           body: JSON.stringify(updateData)
@@ -200,7 +200,7 @@ export async function fetchBackend(action: string, data: any = {}) {
       }
 
       case 'deleteInventory': {
-        const response = await fetch(`${BACKEND_URL}/api/admin/inventory/${data.id}`, {
+        const response = await fetch(`${BACKEND_URL}/api/admin/branches/inventory/${data.id}?branch_id=${data.location_id}`, {
           method: 'DELETE',
           headers
         });

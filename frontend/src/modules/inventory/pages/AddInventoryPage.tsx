@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BACKEND_URL } from '@/shared/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { useLanguage } from '@/shared/context/LanguageContext';
+import { useLocation } from '@/shared/context/LocationContext';
 import PageTransition from '@/shared/components/ui/PageTransition';
 
 const CATEGORIES = ['Coffee', 'Pastry', 'Cake', 'Beverage', 'Sandwich', 'Snack', 'Other'];
@@ -42,6 +43,7 @@ function authHeaders() {
 export default function AddInventoryPage() {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { currentLocation } = useLocation();
   const [activeTab, setActiveTab] = useState<'master' | 'request'>('master');
   const [isSaving, setIsSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -236,21 +238,48 @@ export default function AddInventoryPage() {
     try {
       setIsSaving(true);
       const selectedProduct = masterCatalog.find(p => p.id === selectedMasterId);
-      const costPrice = linkForm.price ? Number(linkForm.price) : selectedProduct?.price || 0;
+      const selectedBranchItem = branchInventory.find(item => item.id === selectedMasterId);
+      const quantity = Number(linkForm.stock);
 
-      const response = await fetch(`${BACKEND_URL}/api/admin/inventory`, {
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new Error(t('addInventory.invalidStock'));
+      }
+
+      const costPrice = linkForm.price ? Number(linkForm.price) : selectedProduct?.price || 0;
+      const isRestock = Boolean(selectedBranchItem);
+
+      const response = await fetch(`${BACKEND_URL}/api/admin/branches/inventory${isRestock ? '/adjust' : ''}`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({
-          product_id: selectedMasterId,
-          stock: Number(linkForm.stock) || 0,
-          cost_price: costPrice,
-          _link_existing: true,
-        }),
+        body: JSON.stringify(isRestock
+          ? {
+              inventoryId: selectedBranchItem.inventory_id,
+              branchId: selectedBranchItem.branch_id,
+              productId: selectedMasterId,
+              type: 'RESTOCK',
+              quantity,
+              reason: 'Restock dari halaman tambah stok',
+            }
+          : {
+              catalogId: selectedMasterId,
+              location_id: currentLocation,
+              stock: quantity,
+              cost_price: costPrice,
+              price: costPrice,
+            }),
       });
 
       const result = await response.json();
       if (response.ok) {
+        if (isRestock) {
+          toast.success(
+            t('addInventory.successRestock')
+              .replace('{name}', selectedProduct?.name || '')
+              .replace('{quantity}', String(quantity))
+          );
+          setTimeout(() => navigate('/inventory'), 1000);
+          return;
+        }
         toast.success(
           language === 'id'
             ? `✅ Berhasil menambahkan "${selectedProduct?.name}" ke toko Anda!`
@@ -258,7 +287,7 @@ export default function AddInventoryPage() {
         );
         setTimeout(() => navigate('/inventory'), 1000);
       } else {
-        throw new Error(result.message || 'Gagal menghubungkan produk');
+        throw new Error(result.message || result.error?.message || 'Gagal memperbarui stok');
       }
     } catch (err: any) {
       toast.error('❌ Gagal: ' + err.message);
@@ -315,10 +344,10 @@ export default function AddInventoryPage() {
     }
   };
 
-  // Filter master catalog to show only products not already in branch inventory
+  // Existing branch products stay visible so this page can also be used for restocking.
   const filteredMasterCatalog = useMemo(() => {
-    const branchProductIds = branchInventory.map(item => item.id);
-    let list = masterCatalog.filter(p => !branchProductIds.includes(p.id));
+    const branchProductIds = new Set(branchInventory.map(item => item.id));
+    let list = [...masterCatalog];
 
     if (masterSearch.trim()) {
       const keyword = masterSearch.toLowerCase();
@@ -328,12 +357,16 @@ export default function AddInventoryPage() {
         (p.category && p.category.toLowerCase().includes(keyword))
       );
     }
-    return list;
+    return list.sort((a, b) => Number(branchProductIds.has(b.id)) - Number(branchProductIds.has(a.id)));
   }, [masterCatalog, branchInventory, masterSearch]);
 
   const selectedProductDetails = useMemo(() => {
     return masterCatalog.find(p => p.id === selectedMasterId) || null;
   }, [masterCatalog, selectedMasterId]);
+
+  const selectedBranchItem = useMemo(() => {
+    return branchInventory.find(item => item.id === selectedMasterId) || null;
+  }, [branchInventory, selectedMasterId]);
 
   return (
     <>
@@ -448,9 +481,11 @@ export default function AddInventoryPage() {
                             key={product.id}
                             onClick={() => {
                               setSelectedMasterId(product.id);
+                              const branchItem = branchInventory.find(item => item.id === product.id);
                               setLinkForm(prev => ({
                                 ...prev,
-                                price: String(product.price || ''),
+                                stock: '',
+                                price: String(branchItem?.price ?? product.price ?? ''),
                               }));
                             }}
                             className={cn(
@@ -482,6 +517,12 @@ export default function AddInventoryPage() {
 
                             <div className="text-right flex-shrink-0">
                               <p className="font-mono font-black text-gray-900 text-sm">Rp {product.price.toLocaleString()}</p>
+                              {branchInventory.some(item => item.id === product.id) && (
+                                <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[9px] font-black uppercase text-indigo-600">
+                                  <Check className="h-3 w-3" />
+                                  {t('addInventory.alreadyInBranch')}
+                                </span>
+                              )}
                               {product.ai_label && (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-emerald-600 mt-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
                                   <BadgeCheck className="w-3 h-3" />
@@ -501,7 +542,9 @@ export default function AddInventoryPage() {
                   <Card className="rounded-[28px] border border-gray-100 shadow-md bg-white overflow-hidden sticky top-6">
                     <div className="p-6 bg-gradient-to-br from-indigo-50/40 to-indigo-100/10 border-b border-gray-100">
                       <h3 className="text-sm font-black text-indigo-950 uppercase tracking-widest">{t('addInventory.branchStockSettings')}</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">{t('addInventory.branchStockDesc')}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {t(selectedBranchItem ? 'addInventory.restockDesc' : 'addInventory.branchStockDesc')}
+                      </p>
                     </div>
 
                     <form onSubmit={handleLinkCatalogSubmit} className="p-6 space-y-5">
@@ -514,24 +557,37 @@ export default function AddInventoryPage() {
                             <div>
                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('addInventory.selectedProduct')}</p>
                               <h5 className="font-bold text-gray-900 text-sm truncate">{selectedProductDetails.name}</h5>
+                              {selectedBranchItem && (
+                                <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-indigo-600">
+                                  {t('addInventory.currentStock')}: {selectedBranchItem.stock ?? 0}
+                                </p>
+                              )}
                             </div>
                           </div>
 
                           {/* Stock Field */}
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">{t('addInventory.initialStock')}</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                              {t(selectedBranchItem ? 'addInventory.restockQuantity' : 'addInventory.initialStock')}
+                            </Label>
                             <Input
                               type="number"
-                              placeholder="0"
+                              min="1"
+                              placeholder="1"
                               value={linkForm.stock}
                               onChange={e => setLinkForm(prev => ({ ...prev, stock: e.target.value }))}
                               className="h-11 rounded-xl bg-gray-50/50 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-100/60 border-gray-200"
                               required
                             />
+                            {selectedBranchItem && Number(linkForm.stock) > 0 && (
+                              <p className="text-xs font-bold text-emerald-600">
+                                {t('addInventory.stockAfter')}: {(Number(selectedBranchItem.stock) || 0) + Number(linkForm.stock)}
+                              </p>
+                            )}
                           </div>
 
                           {/* Branch Custom Price Field */}
-                          <div className="space-y-2">
+                          {!selectedBranchItem && <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center justify-between">
                               <span>{t('addInventory.branchCustomPrice')}</span>
                               <span className="text-[9px] text-gray-400 lowercase font-medium">{t('addInventory.defaultMasterPrice')}</span>
@@ -543,7 +599,7 @@ export default function AddInventoryPage() {
                               onChange={e => setLinkForm(prev => ({ ...prev, price: e.target.value }))}
                               className="h-11 rounded-xl bg-gray-50/50 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-100/60 border-gray-200"
                             />
-                          </div>
+                          </div>}
 
                           <Button
                             type="submit"
@@ -551,7 +607,9 @@ export default function AddInventoryPage() {
                             className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/10 font-bold gap-2 text-xs uppercase tracking-wider border-none mt-4 transition-all"
                           >
                             {isSaving ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <Check className="w-4.5 h-4.5" />}
-                            {isSaving ? t('addInventory.connecting') : t('addInventory.addToStore')}
+                            {isSaving
+                              ? t(selectedBranchItem ? 'addInventory.restocking' : 'addInventory.connecting')
+                              : t(selectedBranchItem ? 'addInventory.addStock' : 'addInventory.addToStore')}
                           </Button>
                         </div>
                       ) : (

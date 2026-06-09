@@ -189,6 +189,7 @@ export default function PromoPage() {
               </div>
             ) : filteredPromos.map(promo => {
               const isSelected = confirmDeleteId === promo.id;
+              const canManagePromo = isSuperAdmin || promo.scope === currentLocation;
               return (
                 <StaggerItem
                   key={promo.id}
@@ -309,22 +310,24 @@ export default function PromoPage() {
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex gap-2 pt-2 border-t border-gray-100">
-                    <Button
-                      variant="ghost"
-                      onClick={() => navigate(`/promo/edit/${promo.id}`)}
-                      className="flex-1 h-10 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" /> {t('common.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setConfirmDeleteId(promo.id)}
-                      className="flex-1 h-10 rounded-2xl font-black text-[10px] uppercase tracking-widest text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center gap-2 border border-rose-100"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
-                    </Button>
-                  </div>
+                  {canManagePromo && (
+                    <div className="flex gap-2 pt-2 border-t border-gray-100">
+                      <Button
+                        variant="ghost"
+                        onClick={() => navigate(`/promo/edit/${promo.id}`)}
+                        className="flex-1 h-10 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" /> {t('common.edit')}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setConfirmDeleteId(promo.id)}
+                        className="flex-1 h-10 rounded-2xl font-black text-[10px] uppercase tracking-widest text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center gap-2 border border-rose-100"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
+                      </Button>
+                    </div>
+                  )}
                 </StaggerItem>
               );
             })}

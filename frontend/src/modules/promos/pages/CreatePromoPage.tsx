@@ -18,7 +18,7 @@ export default function CreatePromoPage() {
   const { id } = useParams();
   const isEditMode = !!id;
   const { user } = useAuth();
-  const { allBranches } = useLocation();
+  const { allBranches, currentLocation } = useLocation();
   const isSuperAdmin = user?.role === 'super_admin';
   const { t, language } = useLanguage();
 
@@ -114,7 +114,7 @@ export default function CreatePromoPage() {
     }
     const scope = isSuperAdmin
       ? (branchTargetType === 'ALL' ? 'ALL' : form.scope)
-      : 'ALL';
+      : currentLocation;
 
     setIsLoading(true);
     try {

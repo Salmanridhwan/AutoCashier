@@ -17,6 +17,7 @@ import PageSkeleton from './shared/components/ui/PageSkeleton';
 // Each page is bundled into its own JS chunk and only downloaded on first visit.
 
 const LoginPage         = React.lazy(() => import('./modules/auth/pages/LoginPage'));
+const LandingPage       = React.lazy(() => import('./modules/landing/pages/LandingPage'));
 const DashboardLayout   = React.lazy(() => import('./shared/components/layout/DashboardLayout'));
 const OverviewPage      = React.lazy(() => import('./modules/dashboard/pages/OverviewPage'));
 const InventoryPage     = React.lazy(() => import('./modules/inventory/pages/InventoryPage'));
@@ -82,6 +83,7 @@ function AppRoutes() {
   return (
     <React.Suspense fallback={<PageSkeleton />}>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
 
         {/* Shared Routes */}
@@ -117,7 +119,6 @@ function AppRoutes() {
         <Route path="/report" element={<AuthGuard><ReportPage /></AuthGuard>} />
         <Route path="/kasir" element={<AuthGuard><LocationProvider><CashierPage /></LocationProvider></AuthGuard>} />
 
-        <Route path="/" element={<Navigate to="/overview" replace />} />
       </Routes>
     </React.Suspense>
   );
@@ -132,7 +133,7 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter basename="/admin">
+    <BrowserRouter>
       <LanguageProvider>
         <AuthProvider>
           <TooltipProvider>

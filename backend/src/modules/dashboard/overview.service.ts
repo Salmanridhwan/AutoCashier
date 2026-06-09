@@ -155,14 +155,26 @@ export async function getOverviewData(params: {
     }
 
     // ── 5. Branches count (always all) ────────────────────────────
-    const { count: totalBranches } = await db
+    let branchesCountQuery = db
       .from('branches')
       .select('*', { count: 'exact', head: true });
+    if (isBranchFilter) branchesCountQuery = branchesCountQuery.eq('id', location_id);
+    const { count: totalBranches } = await branchesCountQuery;
 
     // ── 6. Promo count (table is member_promos) ───────────────────
-    const { count: promoCount } = await db
-      .from('member_promos')
-      .select('*', { count: 'exact', head: true });
+    let promoCount = 0;
+    if (isBranchFilter) {
+      const { data: promoRows } = await db.from('member_promos').select('conditions');
+      promoCount = (promoRows || []).filter((promo: any) => {
+        const scope = promo?.conditions?.scope || 'ALL';
+        return scope === 'ALL' || scope === location_id;
+      }).length;
+    } else {
+      const { count } = await db
+        .from('member_promos')
+        .select('*', { count: 'exact', head: true });
+      promoCount = count ?? 0;
+    }
 
     // ── 7. Chart Data ─────────────────────────────────────────────
     let labels: string[] = [];
@@ -225,7 +237,17 @@ export async function getOverviewData(params: {
     }
 
     // ── 9. Category breakdown ─────────────────────────────────────
-    const { data: catData } = await db.from('products').select('category');
+    let catData: any[] | null = null;
+    if (isBranchFilter) {
+      const { data } = await db
+        .from('branch_inventory')
+        .select('products(category)')
+        .eq('branch_id', location_id);
+      catData = (data || []).map((item: any) => item.products).filter(Boolean);
+    } else {
+      const { data } = await db.from('products').select('category');
+      catData = data;
+    }
     const categoryMap: Record<string, number> = {};
     catData?.forEach((p: any) => {
       const cat = p.category || 'Other';
@@ -338,7 +360,7 @@ export async function getOverviewData(params: {
         productsList,
         latestProducts,
         locations: totalBranches ?? 0,
-        promos: promoCount ?? 0,
+        promos: promoCount,
         timeframe,
         year,
         month,

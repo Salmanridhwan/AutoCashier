@@ -2,7 +2,19 @@ import { supabaseAdmin, supabase } from '../../config/supabaseClient.js';
 
 const client = () => supabaseAdmin || supabase;
 
-export async function getAllPromos() {
+export function getPromoScope(promo: any): string {
+  return promo?.conditions && typeof promo.conditions === 'object' && promo.conditions.scope
+    ? promo.conditions.scope
+    : 'ALL';
+}
+
+export function isPromoVisibleAtBranch(promo: any, branchId?: string): boolean {
+  if (!branchId) return true;
+  const scope = getPromoScope(promo);
+  return scope === 'ALL' || scope === branchId;
+}
+
+export async function getAllPromos(branchId?: string) {
   const { data, error } = await client()
     .from('member_promos')
     .select('*')
@@ -10,15 +22,12 @@ export async function getAllPromos() {
 
   if (data) {
     data.forEach((p: any) => {
-      if (p.conditions && typeof p.conditions === 'object' && p.conditions.scope) {
-        p.scope = p.conditions.scope;
-      } else {
-        p.scope = 'ALL';
-      }
+      p.scope = getPromoScope(p);
     });
   }
 
-  return { ok: !error, data, error };
+  const scopedData = branchId ? data?.filter((promo: any) => isPromoVisibleAtBranch(promo, branchId)) : data;
+  return { ok: !error, data: scopedData, error };
 }
 
 export async function createPromo(payload: any) {
@@ -68,7 +77,7 @@ export async function createPromo(payload: any) {
   return { ok: true, data, error: null };
 }
 
-export async function getPromoById(id: string) {
+export async function getPromoById(id: string, branchId?: string) {
   const { data, error } = await client()
     .from('member_promos')
     .select('*, promo_target_users(user_id)')
@@ -76,21 +85,30 @@ export async function getPromoById(id: string) {
     .single();
     
   if (error || !data) return { ok: false, data: null, error };
+  if (!isPromoVisibleAtBranch(data, branchId)) {
+    return { ok: false, data: null, error: 'FORBIDDEN' };
+  }
   
   // Transform the payload slightly to return target_user_ids flat array
   const target_user_ids = data.promo_target_users?.map((t: any) => t.user_id) || [];
   delete data.promo_target_users;
   
-  if (data.conditions && typeof data.conditions === 'object' && data.conditions.scope) {
-    data.scope = data.conditions.scope;
-  } else {
-    data.scope = 'ALL';
-  }
+  data.scope = getPromoScope(data);
   
   return { ok: true, data: { ...data, target_user_ids }, error: null };
 }
 
-export async function updatePromo(id: string, payload: any) {
+export async function updatePromo(id: string, payload: any, branchId?: string) {
+  if (branchId) {
+    const { data: existing, error: existingError } = await client()
+      .from('member_promos')
+      .select('conditions')
+      .eq('id', id)
+      .maybeSingle();
+    if (existingError || !existing) return { ok: false, data: null, error: existingError || 'NOT_FOUND' };
+    if (getPromoScope(existing) !== branchId) return { ok: false, data: null, error: 'FORBIDDEN' };
+  }
+
   const targetType = payload.target_user_ids && payload.target_user_ids.length > 0
     ? 'SPECIFIC'
     : 'ALL';
@@ -136,7 +154,17 @@ export async function updatePromo(id: string, payload: any) {
   return { ok: true, data, error: null };
 }
 
-export async function deletePromo(id: string) {
+export async function deletePromo(id: string, branchId?: string) {
+  if (branchId) {
+    const { data: existing, error: existingError } = await client()
+      .from('member_promos')
+      .select('conditions')
+      .eq('id', id)
+      .maybeSingle();
+    if (existingError || !existing) return { ok: false, error: existingError || 'NOT_FOUND' };
+    if (getPromoScope(existing) !== branchId) return { ok: false, error: 'FORBIDDEN' };
+  }
+
   const { error } = await client()
     .from('member_promos')
     .delete()

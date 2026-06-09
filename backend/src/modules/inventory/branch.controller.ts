@@ -3,10 +3,14 @@ import { supabaseAdmin } from '../../config/supabaseClient.js';
 
 export async function getBranches(req: Request, res: Response) {
   try {
-    const { data, error } = await supabaseAdmin
+    const user = (req as any).user;
+    let query = supabaseAdmin
       .from('branches')
-      .select('id, name')
-      .order('name');
+      .select('id, name');
+    if (user?.role === 'branch_admin') {
+      query = query.eq('id', user.branch_id);
+    }
+    const { data, error } = await query.order('name');
     
     if (error) throw error;
     

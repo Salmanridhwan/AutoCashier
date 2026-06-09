@@ -297,7 +297,7 @@ export default function AddProductPage() {
     setVideoFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadedCount = Object.values(imageFiles).filter(Boolean).length;
+  const uploadedCount = Object.values(imagePreviews).filter(Boolean).length;
   const totalVideoCount = existingVideos.length + videoFiles.length;
 
   const autoLabel = useMemo(() => {

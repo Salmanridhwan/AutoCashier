@@ -1,12 +1,15 @@
 import * as React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
 import { useLocation } from '@/shared/context/LocationContext';
 import { Button } from '@/shared/components/ui/button';
+import { Badge } from '@/shared/components/ui/badge';
 import { Input } from '@/shared/components/ui/input';
 import {
   Camera, CameraOff, Plus, Minus, Trash2, Search, ShoppingCart, Loader2,
   CheckCircle2, ArrowLeft, ArrowRight, User, Tag, Coins, QrCode,
   LogOut, Sparkles, RefreshCw, X, ScanLine, ChevronLeft, ChevronRight,
+  SwitchCamera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,13 +25,6 @@ interface SuccessOverlayData {
   confidence: number;
   scanCropUrl?: string | null;
 }
-interface ScanVote {
-  productId: string;
-  confidence: number;
-  bbox: number[] | null;
-  cropDetected: boolean;
-  timestamp: number;
-}
 interface ProductImage {
   angle?: string | null;
   image_url?: string | null;
@@ -38,11 +34,7 @@ type Step = 'scan' | 'cart' | 'payment' | 'receipt';
 
 const RECEIPT_SECONDS = 60;
 const SUCCESS_OVERLAY_SECONDS = 2;
-const SCAN_VOTE_WINDOW_SIZE = 3;
-const REQUIRED_ACCEPT_VOTES = 3;
-const VOTE_MAX_AGE_MS = 4500;
-const MIN_VOTE_AVERAGE_CONFIDENCE = 0.70;
-const MIN_STABLE_BBOX_IOU = 0.35;
+const MIN_ACCEPT_CONFIDENCE = 0.70;
 const SCANNER_ROI_OUTPUT_SIZE = 640;
 const rp = (n: number) => 'Rp ' + Math.round(n).toLocaleString('id-ID');
 
@@ -109,16 +101,6 @@ const createCroppedPreview = (sourceCanvas: HTMLCanvasElement | null, bbox: unkn
   return previewCanvas.toDataURL('image/jpeg', 0.82);
 };
 
-const bboxIou = (first: number[], second: number[]) => {
-  const intersectionWidth = Math.max(0, Math.min(first[2], second[2]) - Math.max(first[0], second[0]));
-  const intersectionHeight = Math.max(0, Math.min(first[3], second[3]) - Math.max(first[1], second[1]));
-  const intersection = intersectionWidth * intersectionHeight;
-  const firstArea = (first[2] - first[0]) * (first[3] - first[1]);
-  const secondArea = (second[2] - second[0]) * (second[3] - second[1]);
-  const union = firstArea + secondArea - intersection;
-  return union > 0 ? intersection / union : 0;
-};
-
 const getVideoSourceRoi = (
   video: HTMLVideoElement,
   wrap: HTMLDivElement,
@@ -173,18 +155,20 @@ export default function CashierPage() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
+  const successAudioContextRef = React.useRef<AudioContext | null>(null);
   const isProcessingFrame = React.useRef(false);
   const [cameraActive, setCameraActive] = React.useState(false);
+  const [cameraReady, setCameraReady] = React.useState(false);
   const [cameraError, setCameraError] = React.useState<string | null>(null);
   const [isDetecting, setIsDetecting] = React.useState(false);
   const [isBackgroundFrame, setIsBackgroundFrame] = React.useState(true);
   const [availableCameras, setAvailableCameras] = React.useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = React.useState('');
+  const [isSwitchingCamera, setIsSwitchingCamera] = React.useState(false);
   const [scanStatus, setScanStatus] = React.useState<'SCANNING' | 'ACCEPT' | 'REJECT' | 'STANDBY'>('STANDBY');
   const [feedback, setFeedback] = React.useState('');
   const [successOverlay, setSuccessOverlay] = React.useState<SuccessOverlayData | null>(null);
   const [successCountdown, setSuccessCountdown] = React.useState(SUCCESS_OVERLAY_SECONDS);
-  const scanVotesRef = React.useRef<ScanVote[]>([]);
   const frontImageCacheRef = React.useRef<Map<string, string | null>>(new Map());
 
   // Animated detection box normalized to the fixed scanner ROI.
@@ -210,13 +194,17 @@ export default function CashierPage() {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const vids = devices.filter(d => d.kind === 'videoinput');
       setAvailableCameras(vids);
-      if (vids.length > 0 && !selectedCameraId) setSelectedCameraId(vids[0].deviceId);
+      if (vids.length > 0) setSelectedCameraId(current => current || vids[0].deviceId);
     } catch (e) { console.error(e); }
   };
 
   const startCamera = async (deviceId?: string) => {
     try {
       setCameraError(null);
+      setIsSwitchingCamera(true);
+      setCameraActive(false);
+      setCameraReady(false);
+      setScanStatus('STANDBY');
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       let constraints: MediaStreamConstraints = {
         video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -226,20 +214,35 @@ export default function CashierPage() {
       catch { stream = await navigator.mediaDevices.getUserMedia({ video: true }); }
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
+      const activeDeviceId = stream.getVideoTracks()[0]?.getSettings().deviceId;
+      if (activeDeviceId) setSelectedCameraId(activeDeviceId);
       setCameraActive(true);
-      setScanStatus('SCANNING');
       getCameras();
     } catch (err: any) {
       setCameraError(`Gagal mengakses kamera: ${err.message || err.name || 'beri izin kamera'}`);
       setCameraActive(false);
+      setCameraReady(false);
+      setScanStatus('STANDBY');
+    } finally {
+      setIsSwitchingCamera(false);
     }
   };
 
   const stopCamera = () => {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
     setCameraActive(false);
+    setCameraReady(false);
     setIsDetecting(false);
+    setIsSwitchingCamera(false);
     setScanStatus('STANDBY');
+  };
+
+  const toggleCamera = () => {
+    if (availableCameras.length < 2 || isSwitchingCamera || !cameraReady) return;
+    const currentIndex = availableCameras.findIndex(camera => camera.deviceId === selectedCameraId);
+    const nextCamera = availableCameras[(currentIndex + 1 + availableCameras.length) % availableCameras.length];
+    setSelectedCameraId(nextCamera.deviceId);
+    void startCamera(nextCamera.deviceId);
   };
 
   React.useEffect(() => {
@@ -254,14 +257,15 @@ export default function CashierPage() {
   React.useEffect(() => {
     if (step !== 'scan') return;
     if (streamRef.current && videoRef.current) {
+      setCameraReady(false);
+      setScanStatus('STANDBY');
       videoRef.current.srcObject = streamRef.current;
       setCameraActive(true);
-      setScanStatus('SCANNING');
-    } else if (!streamRef.current) {
+    } else if (!streamRef.current && !isSwitchingCamera) {
       startCamera(selectedCameraId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [step, cameraActive, selectedCameraId]);
 
   // ─── Scanner loop (only on scan step) ─────────────────────────────────────────
   const showDetectionBox = (bbox: number[] | null | undefined, kind: 'ACCEPT' | 'CONFIRM', label: string) => {
@@ -273,45 +277,6 @@ export default function CashierPage() {
     setDetLabel(label);
     if (boxTimerRef.current) clearTimeout(boxTimerRef.current);
     boxTimerRef.current = setTimeout(() => setDetBox(null), 1000);
-  };
-
-  const resetScannerVote = () => {
-    scanVotesRef.current = [];
-  };
-
-  const registerAcceptVote = (productId: string, confidence: number, bbox: unknown, cropDetected: boolean) => {
-    const now = Date.now();
-    const vote: ScanVote = {
-      productId,
-      confidence: Number.isFinite(Number(confidence)) ? Number(confidence) : 0,
-      bbox: normalizeBbox(bbox),
-      cropDetected,
-      timestamp: now,
-    };
-    const recentVotes = [...scanVotesRef.current, vote]
-      .filter(item => now - item.timestamp <= VOTE_MAX_AGE_MS)
-      .slice(-SCAN_VOTE_WINDOW_SIZE);
-    scanVotesRef.current = recentVotes;
-
-    const matchingVotes = recentVotes.filter(item => item.productId === productId);
-    const averageConfidence = matchingVotes.reduce((total, item) => total + item.confidence, 0)
-      / Math.max(1, matchingVotes.length);
-    const latestBbox = vote.bbox;
-    const stableBboxVotes = latestBbox
-      ? matchingVotes.filter(item => item.bbox && bboxIou(item.bbox, latestBbox) >= MIN_STABLE_BBOX_IOU).length
-      : 0;
-    const stableCropVotes = matchingVotes.filter(item => item.cropDetected).length;
-
-    return {
-      votes: matchingVotes.length,
-      averageConfidence,
-      stableBboxVotes,
-      stableCropVotes,
-      verified: (
-        matchingVotes.length >= REQUIRED_ACCEPT_VOTES
-        && averageConfidence >= MIN_VOTE_AVERAGE_CONFIDENCE
-      ),
-    };
   };
 
   // Map a bbox normalized to the submitted ROI back into the visible ROI.
@@ -343,7 +308,6 @@ export default function CashierPage() {
     const detection = result?.detection;
 
     if (isBackground) {
-      resetScannerVote();
       setScanStatus('SCANNING');
       return;
     }
@@ -351,36 +315,24 @@ export default function CashierPage() {
     const isAutoAccepted = (
       product
       && (decision === 'ACCEPT' || decision === 'NEED_CONFIRMATION')
-      && Number(confidence) >= MIN_VOTE_AVERAGE_CONFIDENCE
+      && Number(confidence) >= MIN_ACCEPT_CONFIDENCE
     );
 
     if (isAutoAccepted) {
       showDetectionBox(bbox, 'ACCEPT', product.name);
       setScanStatus('ACCEPT');
-      const voteResult = registerAcceptVote(product.id, confidence, bbox, detection?.detected === true);
-      if (voteResult.verified) {
-        const scanCropUrl = detection?.detected === true
-          ? createCroppedPreview(canvasRef.current, bbox)
-          : null;
-        completeDetectedProduct(product, confidence, scanCropUrl);
-      } else if (voteResult.votes >= REQUIRED_ACCEPT_VOTES && voteResult.averageConfidence < MIN_VOTE_AVERAGE_CONFIDENCE) {
-        setFeedback(`Dekatkan ${product.name} agar terlihat lebih jelas`);
-      } else if (voteResult.votes >= REQUIRED_ACCEPT_VOTES && voteResult.stableBboxVotes < REQUIRED_ACCEPT_VOTES) {
-        setFeedback(`Tahan ${product.name} tetap di dalam kotak`);
-      } else if (voteResult.votes >= REQUIRED_ACCEPT_VOTES && voteResult.stableCropVotes < REQUIRED_ACCEPT_VOTES) {
-        setFeedback(`Posisikan seluruh ${product.name} agar crop terdeteksi stabil`);
-      } else {
-        setFeedback(`Memastikan ${product.name} (${Math.min(voteResult.votes, REQUIRED_ACCEPT_VOTES)}/${REQUIRED_ACCEPT_VOTES})`);
-      }
+      const scanCropUrl = detection?.detected === true
+        ? createCroppedPreview(canvasRef.current, bbox)
+        : null;
+      completeDetectedProduct(product, confidence, scanCropUrl);
     } else if (decision === 'REJECT') {
-      resetScannerVote();
       setScanStatus('REJECT');
     }
   };
 
   const captureFrame = async () => {
     if (!videoRef.current || !canvasRef.current || !camWrapRef.current || !roiFrameRef.current
-      || successOverlay || isProcessingFrame.current || !cameraActive) return;
+      || successOverlay || isProcessingFrame.current || !cameraActive || !cameraReady) return;
     try {
       isProcessingFrame.current = true;
       setIsDetecting(true);
@@ -437,12 +389,12 @@ export default function CashierPage() {
 
   React.useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
-    if (step === 'scan' && cameraActive && !successOverlay) {
+    if (step === 'scan' && cameraActive && cameraReady && !successOverlay) {
       interval = setInterval(captureFrame, 500);
     }
     return () => { if (interval) clearInterval(interval); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, cameraActive, successOverlay, currentLocation]);
+  }, [step, cameraActive, cameraReady, successOverlay, currentLocation]);
 
   // ─── Cart ───────────────────────────────────────────────────────────────────
   const loadFrontImage = async (productId: string, fallbackUrl?: string | null) => {
@@ -505,9 +457,76 @@ export default function CashierPage() {
     });
   };
 
+  const getSuccessAudioContext = React.useCallback(() => {
+    const AudioContextClass = window.AudioContext
+      || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    if (!successAudioContextRef.current || successAudioContextRef.current.state === 'closed') {
+      successAudioContextRef.current = new AudioContextClass();
+    }
+    return successAudioContextRef.current;
+  }, []);
+
+  React.useEffect(() => {
+    const unlockSuccessAudio = () => {
+      const audioContext = getSuccessAudioContext();
+      if (audioContext?.state === 'suspended') void audioContext.resume();
+      window.removeEventListener('pointerdown', unlockSuccessAudio);
+      window.removeEventListener('keydown', unlockSuccessAudio);
+    };
+
+    window.addEventListener('pointerdown', unlockSuccessAudio, { once: true });
+    window.addEventListener('keydown', unlockSuccessAudio, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockSuccessAudio);
+      window.removeEventListener('keydown', unlockSuccessAudio);
+      const audioContext = successAudioContextRef.current;
+      successAudioContextRef.current = null;
+      if (audioContext && audioContext.state !== 'closed') void audioContext.close();
+    };
+  }, [getSuccessAudioContext]);
+
+  const playSuccessSound = async () => {
+    try {
+      const audioContext = getSuccessAudioContext();
+      if (!audioContext) return;
+      if (audioContext.state === 'suspended') await audioContext.resume();
+
+      const masterGain = audioContext.createGain();
+      const soundStart = audioContext.currentTime + 0.02;
+      masterGain.gain.setValueAtTime(0.0001, soundStart);
+      masterGain.gain.exponentialRampToValueAtTime(0.2, soundStart + 0.025);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, soundStart + 0.85);
+      masterGain.connect(audioContext.destination);
+
+      [
+        { frequency: 523.25, delay: 0 },
+        { frequency: 659.25, delay: 0.11 },
+        { frequency: 783.99, delay: 0.22 },
+      ].forEach(({ frequency, delay }) => {
+        const oscillator = audioContext.createOscillator();
+        const noteGain = audioContext.createGain();
+        const startAt = soundStart + delay;
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, startAt);
+        noteGain.gain.setValueAtTime(0.0001, startAt);
+        noteGain.gain.exponentialRampToValueAtTime(0.75, startAt + 0.025);
+        noteGain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.4);
+        oscillator.connect(noteGain);
+        noteGain.connect(masterGain);
+        oscillator.start(startAt);
+        oscillator.stop(startAt + 0.42);
+      });
+    } catch (error) {
+      console.warn('[SCANNER] Efek suara sukses tidak dapat dimainkan:', error);
+    }
+  };
+
   const completeDetectedProduct = (product: any, confidence: number, scanCropUrl?: string | null) => {
     addToCart(product, scanCropUrl);
-    resetScannerVote();
+    void playSuccessSound();
     setDetBox(null);
     setScanStatus('ACCEPT');
     setFeedback(`Ditambahkan: ${product.name}`);
@@ -527,7 +546,6 @@ export default function CashierPage() {
       setScanStatus('SCANNING');
       setFeedback('');
       setIsBackgroundFrame(true);
-      resetScannerVote();
     }, SUCCESS_OVERLAY_SECONDS * 1000);
 
     return () => {
@@ -642,7 +660,6 @@ export default function CashierPage() {
     setScanStatus('SCANNING');
     setSuccessOverlay(null);
     setSuccessCountdown(SUCCESS_OVERLAY_SECONDS);
-    resetScannerVote();
     setDetBox(null);
     setStep('scan');
   };
@@ -651,28 +668,90 @@ export default function CashierPage() {
     ? `QRIS|${receipt.invoiceNumber}|${total}`
     : `QRIS|${currentLocation}|${total}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=8&data=${encodeURIComponent(qrData)}`;
+  const activeCameraIndex = availableCameras.findIndex(camera => camera.deviceId === selectedCameraId);
+  const activeCamera = activeCameraIndex >= 0 ? availableCameras[activeCameraIndex] : availableCameras[0];
+  const activeCameraName = activeCamera?.label || (
+    availableCameras.length > 0 ? `Kamera ${Math.max(1, activeCameraIndex + 1)}` : 'Kamera'
+  );
+  const isPreparingCamera = isSwitchingCamera || (cameraActive && !cameraReady);
+  const scannerBadge = cameraError
+    ? {
+        label: 'Scanner Bermasalah',
+        compactLabel: 'Bermasalah',
+        icon: CameraOff,
+        className: 'border-rose-200 bg-rose-50 text-rose-700',
+      }
+    : isPreparingCamera
+      ? {
+          label: 'Menyiapkan Scanner',
+          compactLabel: 'Menyiapkan',
+          icon: Loader2,
+          className: 'border-amber-200 bg-amber-50 text-amber-700',
+        }
+      : cameraActive && cameraReady && scanStatus !== 'STANDBY'
+        ? {
+            label: 'Scanner Siap',
+            compactLabel: 'Siap',
+            icon: ScanLine,
+            className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          }
+        : {
+            label: 'Scanner Belum Siap',
+            compactLabel: 'Belum Siap',
+            icon: CameraOff,
+            className: 'border-gray-200 bg-gray-100 text-gray-600',
+          };
+  const ScannerBadgeIcon = scannerBadge.icon;
 
   // ════════════════════════════════════════════════════════════════════════════
   // RENDER
   // ════════════════════════════════════════════════════════════════════════════
   const Header = () => (
-    <header className="h-16 px-6 border-b border-gray-200 bg-white flex items-center justify-between shrink-0 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-indigo-600 text-white"><Sparkles className="size-5" /></div>
-        <div>
-          <h1 className="text-lg font-bold text-gray-900">AutoCashier POS</h1>
-          <p className="text-xs text-gray-500">Cabang: {locationName} · {user?.username}</p>
+    <header className="flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 py-2 shadow-sm sm:px-6">
+      <Link to="/" className="group flex min-w-0 items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity">
+        <div className="shrink-0 rounded-xl bg-indigo-600 p-2 text-white group-hover:scale-105 transition-transform"><Sparkles className="size-5" /></div>
+        <div className="min-w-0">
+          <h1 className="truncate text-base font-bold text-gray-900 sm:text-lg group-hover:text-indigo-600 transition-colors">AutoCashier POS</h1>
+          <p className="hidden truncate text-xs text-gray-500 sm:block">Cabang: {locationName} · {user?.username}</p>
         </div>
-      </div>
-      <div className="flex items-center gap-3">
-        {step === 'scan' && availableCameras.length > 1 && (
-          <select value={selectedCameraId} onChange={(e) => { setSelectedCameraId(e.target.value); startCamera(e.target.value); }}
-            className="h-10 px-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-700">
-            {availableCameras.map(c => <option key={c.deviceId} value={c.deviceId}>{c.label || `Kamera ${c.deviceId.slice(0, 5)}`}</option>)}
-          </select>
+      </Link>
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+        {step === 'scan' && (
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Badge variant="outline" className={`h-8 gap-1.5 px-2 font-semibold sm:px-3 ${scannerBadge.className}`}>
+              <ScannerBadgeIcon className={isPreparingCamera ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">{scannerBadge.label}</span>
+              <span className="sm:hidden">{scannerBadge.compactLabel}</span>
+            </Badge>
+            {availableCameras.length > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={toggleCamera}
+                disabled={isPreparingCamera || !cameraReady}
+                className="h-10 max-w-56 gap-2 rounded-full border-indigo-200 bg-indigo-50 px-3 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800"
+                aria-label={`Ganti kamera. Kamera aktif: ${activeCameraName}`}
+                title={`Kamera aktif: ${activeCameraName}`}
+              >
+                {isPreparingCamera
+                  ? <Loader2 className="size-4 animate-spin" />
+                  : <SwitchCamera className="size-4" />}
+                <span className="hidden truncate sm:inline">
+                  {isPreparingCamera
+                    ? 'Menyiapkan kamera...'
+                    : `Kamera ${Math.max(1, activeCameraIndex + 1)}/${availableCameras.length}`}
+                </span>
+              </Button>
+            )}
+          </div>
         )}
-        <Button variant="ghost" onClick={() => { stopCamera(); logout(); }} className="text-gray-500 hover:text-gray-900">
-          <LogOut className="size-4 mr-1.5" /> Keluar
+        <Button
+          variant="ghost"
+          onClick={() => { stopCamera(); logout(); }}
+          className="px-2 text-gray-500 hover:text-gray-900 sm:px-4"
+          aria-label="Keluar"
+        >
+          <LogOut className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">Keluar</span>
         </Button>
       </div>
     </header>
@@ -686,7 +765,21 @@ export default function CashierPage() {
       {/* Camera (80%) */}
       <section ref={camWrapRef} className="relative bg-black flex items-center justify-center overflow-hidden">
         {cameraActive ? (
-          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            onCanPlay={() => {
+              setCameraReady(true);
+              setScanStatus('SCANNING');
+            }}
+            onEmptied={() => {
+              setCameraReady(false);
+              setScanStatus('STANDBY');
+            }}
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className="flex flex-col items-center gap-4 text-gray-400">
             <CameraOff className="size-16 stroke-[1.5]" />
@@ -695,6 +788,46 @@ export default function CashierPage() {
           </div>
         )}
         <canvas ref={canvasRef} className="hidden" />
+
+        {successOverlay && (
+          <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center overflow-hidden p-3 sm:p-5 lg:p-6">
+            <div className="success-celebration relative w-full max-w-[20rem] sm:max-w-sm">
+              <div className="success-detection-rays absolute left-1/2 top-1/2 size-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full sm:size-[32rem]" />
+              <div className="success-detection-particles absolute inset-0" aria-hidden="true">
+                {Array.from({ length: 10 }).map((_, index) => (
+                  <span key={index} style={{ '--particle-index': index } as React.CSSProperties}>
+                    <Sparkles className="size-4 sm:size-5" />
+                  </span>
+                ))}
+              </div>
+              <div className="success-detection-card relative max-h-[calc(100vh-6rem)] overflow-hidden rounded-2xl border border-emerald-200 bg-white/95 p-4 text-center shadow-2xl backdrop-blur-sm sm:rounded-3xl sm:p-6 lg:p-7">
+                <div className="success-detection-glow absolute inset-x-8 -top-24 h-44 rounded-full bg-emerald-300/40 blur-3xl" />
+                <div className="success-detection-ring relative mx-auto mb-2 flex size-14 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-300/60 sm:mb-4 sm:size-20">
+                  <CheckCircle2 className="success-detection-check size-8 sm:size-11" />
+                </div>
+                <p className="relative text-xs font-bold uppercase tracking-[0.16em] text-emerald-600 sm:text-sm sm:tracking-[0.2em]">Produk Terdeteksi</p>
+                <ProductThumbnail
+                  imageUrl={successOverlay.scanCropUrl || successOverlay.product.image_url}
+                  name={successOverlay.product.name}
+                  className="success-detection-product relative mx-auto mt-2 size-20 rounded-xl border border-gray-200 bg-white shadow-md sm:mt-4 sm:size-28 sm:rounded-2xl"
+                />
+                <h2 className="relative mt-2 truncate text-lg font-extrabold text-gray-900 sm:mt-4 sm:text-2xl" title={successOverlay.product.name}>
+                  {successOverlay.product.name}
+                </h2>
+                <p className="relative mt-0.5 text-base font-bold text-indigo-600 sm:mt-1 sm:text-lg">{rp(successOverlay.product.price)}</p>
+                <div className="relative mx-auto mt-2 flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 sm:mt-3 sm:px-3 sm:py-1.5 sm:text-sm">
+                  <ShoppingCart className="size-3.5 sm:size-4" /> Masuk ke keranjang
+                </div>
+                <p className="relative mt-2 text-xs text-gray-500 sm:mt-3 sm:text-sm">
+                  Scan berikutnya dalam {successCountdown} detik.
+                </p>
+                <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100 sm:mt-5">
+                  <div className="success-detection-progress h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {!isScanCartOpen && (
           <button
@@ -1032,31 +1165,6 @@ export default function CashierPage() {
       {step === 'cart' && renderCart()}
       {step === 'payment' && renderPayment()}
       {step === 'receipt' && renderReceipt()}
-
-      {successOverlay && (
-        <div className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <div className="success-detection-card relative w-full max-w-sm overflow-hidden rounded-3xl border border-emerald-200 bg-white/95 p-7 text-center shadow-2xl">
-            <div className="success-detection-ring mx-auto mb-4 flex size-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-              <CheckCircle2 className="size-11" />
-            </div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-600">Produk Terdeteksi</p>
-            <ProductThumbnail
-              imageUrl={successOverlay.scanCropUrl || successOverlay.product.image_url}
-              name={successOverlay.product.name}
-              className="mx-auto mt-4 size-28 rounded-2xl border border-gray-200 bg-white shadow-sm"
-            />
-            <h2 className="mt-4 text-2xl font-extrabold text-gray-900">{successOverlay.product.name}</h2>
-            <p className="mt-1 text-lg font-bold text-indigo-600">{rp(successOverlay.product.price)}</p>
-            <p className="mt-3 text-sm text-gray-500">
-              Berhasil ditambahkan ke keranjang. Scan berikutnya dalam {successCountdown} detik.
-            </p>
-            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-gray-100">
-              <div className="success-detection-progress h-full rounded-full bg-emerald-500" />
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

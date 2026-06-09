@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabaseAdmin as supabase } from '../../config/supabaseClient.js';
+import { applyBranchStockSale, prepareBranchStockSale } from './checkoutStock.service.js';
 
 const POINTS_EARN_RATE = 0.01; // 1% of total paid
 
@@ -107,6 +108,20 @@ async function processLoyaltyPoints(
   console.log(`[LOYALTY] ✅ Done: member=${memberId} -${pointsUsed}pts +${earnedPoints}pts → balance=${newBalance}pts`);
 }
 
+async function removeIncompleteTransaction(transactionId: string): Promise<void> {
+  const { error: itemError } = await supabase
+    .from('transaction_items')
+    .delete()
+    .eq('transaction_id', transactionId);
+  if (itemError) console.error('[CHECKOUT] Failed to remove incomplete transaction items:', itemError);
+
+  const { error: transactionError } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', transactionId);
+  if (transactionError) console.error('[CHECKOUT] Failed to remove incomplete transaction:', transactionError);
+}
+
 /**
  * POST /api/kasir/checkout
  * Process a POS checkout: create transaction, insert items, update stock, handle loyalty points.
@@ -114,8 +129,25 @@ async function processLoyaltyPoints(
 export async function checkout(req: Request, res: Response): Promise<void> {
   try {
     const { header, items, receiptBase64 } = req.body;
+    if (!header) {
+      res.status(400).json({ success: false, code: 'INVALID_CHECKOUT', message: 'Data checkout tidak lengkap' });
+      return;
+    }
 
-    const invoiceNumber = header.invoice_number || `AC-${Date.now()}`;
+    const user = (req as any).user;
+    const branchId = user?.branch_id || header?.branch_id;
+
+    const stockPlanResult = await prepareBranchStockSale(branchId, items);
+    if (!stockPlanResult.ok) {
+      res.status(400).json({
+        success: false,
+        code: stockPlanResult.code,
+        message: stockPlanResult.message,
+      });
+      return;
+    }
+
+    const invoiceNumber = header?.invoice_number || `AC-${Date.now()}`;
     const receiptUrl = receiptBase64 ? await uploadReceiptImage(receiptBase64, invoiceNumber) : null;
 
     // Insert transaction header
@@ -124,7 +156,7 @@ export async function checkout(req: Request, res: Response): Promise<void> {
       .insert([
         {
           invoice_number: invoiceNumber,
-          branch_id: header.branch_id || null,
+          branch_id: branchId,
           member_id: header.member_id || null,
           total_price: header.total_price,
           payment_method: header.payment_method,
@@ -154,13 +186,23 @@ export async function checkout(req: Request, res: Response): Promise<void> {
 
       if (itemError) {
         console.error(`[CHECKOUT] Failed to insert transaction_item for product ${productId}:`, itemError);
+        await removeIncompleteTransaction(transaction.id);
+        throw itemError;
       }
+    }
 
-      // Decrement stock
-      const { data: product } = await supabase.from('products').select('stock').eq('id', productId).single();
-      if (product) {
-        await supabase.from('products').update({ stock: product.stock - qty }).eq('id', productId);
-      }
+    const stockUpdateResult = await applyBranchStockSale(stockPlanResult.data, {
+      invoiceNumber,
+      performedBy: user?.sub || user?.id || null,
+    });
+    if (!stockUpdateResult.ok) {
+      await removeIncompleteTransaction(transaction.id);
+      res.status(409).json({
+        success: false,
+        code: stockUpdateResult.code,
+        message: stockUpdateResult.message,
+      });
+      return;
     }
 
     // Process loyalty points if member transaction

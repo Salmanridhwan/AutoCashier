@@ -1,11 +1,11 @@
 import { supabase, supabaseAdmin } from '../../config/supabaseClient.js';
 import bcrypt from 'bcryptjs';
 
-export async function getAllUsers() {
+export async function getAllUsers(branchId?: string) {
   try {
     const db = supabaseAdmin || supabase;
     // Fetch users from the 'users' table
-    const { data, error } = await db
+    let usersQuery = db
       .from('users')
       .select(`
         id,
@@ -21,10 +21,14 @@ export async function getAllUsers() {
         member_points (
           balance
         )
-      `)
-      .order('full_name');
+      `);
+    if (branchId) {
+      usersQuery = usersQuery.or(`branch_id.eq.${branchId},role.eq.member`);
+    }
+    const { data, error } = await usersQuery.order('full_name');
 
     if (error) {
+      if (branchId) return { ok: false, error };
       // If error occurs (likely because branch_id doesn't exist yet), fallback
       console.warn('[userService] Failed to fetch users with branches, falling back...', error);
     }
@@ -64,6 +68,22 @@ export async function getAllUsers() {
   } catch (err) {
     console.error('[userService] ❌ Error fetching users:', err);
     return { ok: false, error: err };
+  }
+}
+
+export async function getUserAccessScope(userId: string) {
+  try {
+    const db = supabaseAdmin || supabase;
+    const { data, error } = await db
+      .from('users')
+      .select('id, role, branch_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: err, data: null };
   }
 }
 
