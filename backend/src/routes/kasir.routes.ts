@@ -2,19 +2,26 @@ import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import { requireRole } from '../middleware/rbacMiddleware.js';
 import kasirModuleRoutes from '../modules/kasir/kasir.routes.js';
-import { healthCheck, detect } from '../modules/vision/vision.controller.js';
+import { healthCheck, detect, detectV2 } from '../modules/vision/vision.controller.js';
+import { upload } from '../middleware/upload.js';
 import { supabaseAdmin as supabase } from '../config/supabaseClient.js';
 import * as checkoutController from '../modules/kasir/checkout.controller.js';
 
 const router = Router();
 
+// Role yang boleh mengakses operasi kasir/POS (PRD §22.3)
+const POS_ROLES = ['kasir', 'admin', 'branch_admin', 'super_admin'];
+
 // =====================================================================
-// PUBLIC ROUTES — No auth needed (POS kiosk mode tanpa login password)
+// PUBLIC ROUTES — No auth needed
 // =====================================================================
 
-// AI Vision
+// Vision health — status check, tidak sensitif
 router.get('/vision/health', healthCheck);
-router.post('/detect', detect);
+
+// AI Vision — wajib login (kasir/admin/branch_admin/super_admin)
+router.post('/detect', requireAuth, requireRole(POS_ROLES), detect);
+router.post('/detect-v2', requireAuth, requireRole(POS_ROLES), upload.single('file'), detectV2);
 
 // Member check — hanya baca, tidak sensitif
 router.post('/members/check', async (req: Request, res: Response) => {
@@ -69,11 +76,11 @@ router.post('/members/check', async (req: Request, res: Response) => {
   }
 });
 
-// Checkout — inti transaksi POS, harus selalu bisa diproses
-router.post('/checkout', checkoutController.checkout);
+// Checkout — inti transaksi POS, wajib login
+router.post('/checkout', requireAuth, requireRole(POS_ROLES), checkoutController.checkout);
 
-// Products — POS perlu load produk tanpa login
-router.get('/products', async (_req: Request, res: Response) => {
+// Products — wajib login (kasir/admin/branch_admin/super_admin)
+router.get('/products', requireAuth, requireRole(POS_ROLES), async (_req: Request, res: Response) => {
   try {
     const { data: products, error } = await supabase.from('products').select('*').order('name');
     if (error) throw error;

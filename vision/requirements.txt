@@ -1,0 +1,24 @@
+# AutoCashier Vision Server dependencies (PRD §14.1)
+# Install: pip install -r requirements.txt
+
+# --- Training (ResNet-50 fine-tuning) ---
+transformers
+datasets
+evaluate
+accelerate
+torch
+torchvision
+pillow
+scikit-learn
+
+# --- Vision Server runtime ---
+fastapi
+uvicorn
+python-multipart
+opencv-python
+easyocr
+rapidfuzz
+supabase
+ultralytics
+numpy
+python-dotenv

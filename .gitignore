@@ -52,3 +52,5 @@ models/
 *.onnx
 *.safetensors
 
+/skills
+

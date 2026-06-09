@@ -1,0 +1,1299 @@
+[SERVER] Starting FastAPI server on http://127.0.0.1:5002...
+INFO:     Started server process [25104]
+INFO:     Waiting for application startup.
+[STARTUP] Initializing models and repositories...
+[REPOSITORY] Connecting to Supabase Client (https://zhghwaypdgpxlznkammt.supabase.co)...
+[REPOSITORY] Refreshing cache from Supabase products table...
+[REPOSITORY] Successfully cached 20 active AI products.
+[STARTUP] Loading YOLO-World model...
+[STARTUP] YOLO-World loaded successfully.
+[CLASSIFIER] Loading model from 'models/resnet50-product-classifier' on device: cuda
+Loading weights:   0%|          | 0/320 [00:00<?, ?it/s]Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 320/320 [00:00<00:00, 8840.93it/s]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5002 (Press CTRL+C to quit)
+[STARTUP] ResNet-50 Classifier loaded successfully.
+[OCR] Initializing EasyOCR Reader (languages=['id', 'en'], GPU=True)...
+[STARTUP] EasyOCR Verifier loaded successfully.
+INFO:     127.0.0.1:58677 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58678 - "POST /build-dataset HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58680 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49198 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56158 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62432 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64127 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57065 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50110 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60281 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50245 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64599 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59229 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54957 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56668 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53454 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52706 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61703 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56076 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55589 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61634 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49337 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60719 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54250 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60375 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65456 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53456 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61642 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61072 - "GET /build-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49679 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49680 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49679 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49680 - "GET /train-status HTTP/1.1" 200 OK
+C:\Kuliah\JagoAI-app\AutoCashier-Admin\AutoCashier-Admin\vision\vision_server.py:407: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+  params = req.dict()
+INFO:     127.0.0.1:60055 - "POST /train HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+[CLASSIFIER] Loading model from 'models/resnet50-product-classifier' on device: cuda
+Loading weights:   0%|          | 0/320 [00:00<?, ?it/s]Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 320/320 [00:00<00:00, 9311.69it/s]
+[REPOSITORY] Refreshing cache from Supabase products table...
+[REPOSITORY] Successfully cached 20 active AI products.
+INFO:     127.0.0.1:60055 - "GET /train-status HTTP/1.1" 200 OK
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.7787, gap=0.6958)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:55772 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.7468, gap=0.5634)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:61728 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.3720, gap=0.1241)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61728 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.4062, gap=0.0533)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:61728 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] Crop successful: bbox=[581.92, 9.63, 593.36, 26.82] confidence=0.26
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4044, gap=0.1079)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61728 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.3872, gap=0.1466)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61728 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.3602, gap=0.1087)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61728 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4122, gap=0.1057)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61728 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] Crop successful: bbox=[116.73, 89.85, 125.86, 111.39] confidence=0.25
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.7047, gap=0.6527)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:61728 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: NEED_CONFIRMATION
+[DETECTION] Crop successful: bbox=[345.76, 0.36, 358.69, 37.84] confidence=0.50
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4111, gap=0.3315)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[DETECTION] Crop successful: bbox=[345.62, 0.38, 358.87, 37.49] confidence=0.48
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4598, gap=0.3859)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.82, 0.36, 358.6, 37.41] confidence=0.53
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4795, gap=0.4083)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.94, 0.11, 358.89, 37.87] confidence=0.47
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.3635, gap=0.2744)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.7449, gap=0.6791)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.3127, gap=0.0438)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.2942, gap=0.0287)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.2841, gap=0.0979)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] Crop successful: bbox=[581.54, 9.66, 592.33, 26.99] confidence=0.25
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4101, gap=0.2031)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.2958, gap=0.1300)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.2978, gap=0.1689)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] Crop successful: bbox=[117.2, 90.44, 125.72, 111.56] confidence=0.27
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.7769, gap=0.7326)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:57291 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: NEED_CONFIRMATION
+[DETECTION] Crop successful: bbox=[345.71, 0.04, 359.32, 37.92] confidence=0.42
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2680, gap=0.1892)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52021 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[DETECTION] Crop successful: bbox=[345.64, 0.41, 359.36, 37.78] confidence=0.46
+[CLASSIFICATION] Predicted: krice (confidence=0.3374, gap=0.1868)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52021 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[LOG] Logged scan to Supabase (without source) for class 'krice' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6228, gap=0.4455)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52021 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6358, gap=0.4409)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52021 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.7219, gap=0.5443)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:52021 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] Crop successful: bbox=[345.44, 0.45, 358.56, 37.56] confidence=0.54
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4529, gap=0.3823)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.92, 0.08, 358.59, 37.56] confidence=0.48
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4681, gap=0.3805)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[116.91, 90.15, 125.59, 111.23] confidence=0.31
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.6402, gap=0.5755)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[346.12, 0.0, 358.65, 37.75] confidence=0.37
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2716, gap=0.1733)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.77, 0.47, 358.51, 37.46] confidence=0.49
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.3574, gap=0.1251)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.52, 0.39, 358.42, 37.59] confidence=0.46
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.5663, gap=0.5008)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.44, 0.48, 358.7, 37.21] confidence=0.42
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.3102, gap=0.2169)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.68, 0.42, 358.74, 37.33] confidence=0.46
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4330, gap=0.3448)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.7, 0.04, 358.96, 37.38] confidence=0.41
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.1332, gap=0.0074)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.7, 0.04, 359.39, 37.53] confidence=0.41
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2333, gap=0.0578)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.35, 0.07, 359.66, 37.63] confidence=0.39
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2457, gap=0.1484)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6980, gap=0.5187)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.74, 0.0, 358.73, 37.3] confidence=0.52
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4031, gap=0.3279)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.42, 0.26, 358.75, 37.33] confidence=0.43
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2171, gap=0.1339)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.6, 0.43, 358.63, 37.37] confidence=0.50
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4401, gap=0.3510)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.61, 0.33, 359.13, 37.4] confidence=0.45
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4278, gap=0.3413)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.46, 0.06, 359.44, 37.45] confidence=0.43
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2609, gap=0.1736)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.57, 0.02, 359.8, 37.58] confidence=0.35
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2690, gap=0.1611)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.59, 0.02, 359.98, 31.06] confidence=0.29
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.1881, gap=0.0808)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.65, 0.38, 358.42, 37.21] confidence=0.47
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2518, gap=0.1094)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.32, 0.4, 358.71, 37.28] confidence=0.43
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.1717, gap=0.0720)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.77, 0.02, 359.56, 31.52] confidence=0.27
+[CLASSIFICATION] Predicted: minute_made (confidence=0.1929, gap=0.1072)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'minute_made' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.97, 0.24, 358.76, 37.86] confidence=0.38
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4489, gap=0.3695)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.5, 0.35, 358.88, 37.41] confidence=0.44
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2317, gap=0.1097)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.59, 0.48, 358.59, 37.31] confidence=0.48
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.3361, gap=0.2539)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.54, 0.41, 358.87, 37.23] confidence=0.40
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2217, gap=0.1108)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.52, 0.43, 358.81, 37.26] confidence=0.50
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.3244, gap=0.2111)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.48, 0.43, 358.87, 37.39] confidence=0.48
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2779, gap=0.1922)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[345.44, 0.33, 359.1, 37.26] confidence=0.36
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2150, gap=0.1090)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nescafe_cappucino (confidence=0.3908, gap=0.0962)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nescafe_cappucino' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6459, gap=0.4799)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4950, gap=0.1865)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: buah_vita (confidence=0.3061, gap=0.1002)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'buah_vita' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: prima (confidence=0.4071, gap=0.2138)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'prima' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4322, gap=0.2018)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: prima (confidence=0.3943, gap=0.0341)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'prima' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.7259, gap=0.5995)
+[OCR] Verification result: {'passed': False, 'reason': 'low_ocr_score', 'ocr_text': 'docu', 'score': 22.22}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.8611, gap=0.8249)
+[OCR] Verification result: {'passed': False, 'reason': 'low_ocr_score', 'ocr_text': '300', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:61058 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: buah_vita (confidence=0.2013, gap=0.0134)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'buah_vita' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4436, gap=0.3366)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.3145, gap=0.1896)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.3678, gap=0.2235)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4298, gap=0.2782)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5062, gap=0.3507)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5212, gap=0.3808)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5051, gap=0.3461)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.3810, gap=0.2164)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4779, gap=0.3283)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.5794, gap=0.3277)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.2462, gap=0.0577)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.2706, gap=0.0239)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.3499, gap=0.0390)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.2824, gap=0.0495)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.3180, gap=0.0645)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.3399, gap=0.0951)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] Crop successful: bbox=[124.44, 179.89, 132.74, 200.72] confidence=0.29
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.5622, gap=0.4946)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.3410, gap=0.0145)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.3194, gap=0.0727)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.2793, gap=0.0187)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.3180, gap=0.0339)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4355, gap=0.2678)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4383, gap=0.3049)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6940, gap=0.5980)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5670, gap=0.4548)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.3247, gap=0.1618)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4264, gap=0.2921)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.3655, gap=0.2232)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4582, gap=0.3126)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5765, gap=0.4533)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.8476, gap=0.8011)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4397, gap=0.2543)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6578, gap=0.5684)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] Crop successful: bbox=[124.7, 178.9, 132.84, 200.09] confidence=0.25
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.7619, gap=0.7152)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4788, gap=0.3016)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5105, gap=0.4053)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5746, gap=0.4547)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5521, gap=0.4112)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4602, gap=0.3102)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4583, gap=0.3085)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.7154, gap=0.6403)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.4076, gap=0.2165)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4182, gap=0.1437)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.5099, gap=0.2779)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.3346, gap=0.0609)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.3014, gap=0.0342)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5038, gap=0.4018)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5760, gap=0.4565)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6420, gap=0.5588)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6008, gap=0.5068)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6938, gap=0.6122)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.5539, gap=0.4469)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.7321, gap=0.6595)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.2792, gap=0.0513)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.3292, gap=0.0332)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] Crop successful: bbox=[124.85, 179.46, 132.9, 200.81] confidence=0.28
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.8258, gap=0.7878)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:58238 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.3354, gap=0.1347)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.2463, gap=0.0464)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2424, gap=0.0514)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.2783, gap=0.0856)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2314, gap=0.0314)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.3313, gap=0.1468)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4100, gap=0.2112)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: buah_vita (confidence=0.3732, gap=0.1329)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'buah_vita' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.2359, gap=0.0281)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.3041, gap=0.1160)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: buah_vita (confidence=0.1871, gap=0.0355)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'buah_vita' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.3639, gap=0.0812)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.9277, gap=0.9003)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: ocr_mismatch)
+INFO:     127.0.0.1:54645 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.8152, gap=0.7598)
+[OCR] Verification result: {'passed': False, 'reason': 'low_ocr_score', 'ocr_text': 'coge', 'score': 46.67}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.6146, gap=0.3277)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.3088, gap=0.1265)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.6229, gap=0.5051)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.4118, gap=0.2120)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nescafe_cappucino (confidence=0.2507, gap=0.0469)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nescafe_cappucino' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.9987, gap=0.9981)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.9998, gap=0.9997)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.9989, gap=0.9983)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.9993, gap=0.9991)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nescafe_cappucino (confidence=0.3166, gap=0.0395)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nescafe_cappucino' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.2424, gap=0.0261)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.9513, gap=0.9361)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.9870, gap=0.9810)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.9975, gap=0.9969)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.9967, gap=0.9956)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.9949, gap=0.9930)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: good_time_double_choc (confidence=0.3164, gap=0.1129)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'good_time_double_choc' with decision: REJECT
+[DETECTION] Crop successful: bbox=[124.51, 179.28, 132.86, 200.84] confidence=0.29
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.6790, gap=0.6232)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.5568, gap=0.3486)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: buah_vita (confidence=0.2237, gap=0.0115)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'buah_vita' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: buah_vita (confidence=0.2352, gap=0.0174)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'buah_vita' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: buah_vita (confidence=0.2495, gap=0.0583)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'buah_vita' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.2806, gap=0.1027)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2002, gap=0.0039)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.8858, gap=0.8325)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:50734 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: NEED_CONFIRMATION
+[DETECTION] Crop successful: bbox=[124.53, 178.76, 133.11, 200.98] confidence=0.27
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.6276, gap=0.5665)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[DETECTION] Crop successful: bbox=[124.8, 180.36, 132.95, 200.75] confidence=0.25
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.7459, gap=0.6979)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: NEED_CONFIRMATION
+[DETECTION] Crop successful: bbox=[124.5, 178.33, 132.97, 200.82] confidence=0.25
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.5978, gap=0.5328)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[124.54, 179.07, 132.88, 200.85] confidence=0.30
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.6168, gap=0.5532)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.2565, gap=0.0575)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.3875, gap=0.2191)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.5262, gap=0.3881)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.5082, gap=0.3680)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: country_choice_jeruk (confidence=0.4376, gap=0.2781)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[LOG] Logged scan to Supabase (without source) for class 'country_choice_jeruk' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.2565, gap=0.0574)
+[DECISION] Result: REJECT (Reason: low_gap_threshold)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'nu_teh_tarik' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.2643, gap=0.1057)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[124.71, 179.48, 132.96, 200.98] confidence=0.26
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.6953, gap=0.6419)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.4459, gap=0.2672)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: REJECT
+[DETECTION] Crop successful: bbox=[124.83, 179.86, 133.15, 200.98] confidence=0.28
+[CLASSIFICATION] Predicted: bear_brand (confidence=0.7756, gap=0.7318)
+[OCR] Verification result: {'passed': False, 'reason': 'no_text_detected', 'ocr_text': '', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: moderate_confidence)
+INFO:     127.0.0.1:52200 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'bear_brand' with decision: NEED_CONFIRMATION
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nu_teh_tarik (confidence=0.6568, gap=0.5518)
+[DECISION] Result: REJECT (Reason: low_confidence)
+INFO:     127.0.0.1:56328 - "POST /detect-v2 HTTP/1.1" 200 OK

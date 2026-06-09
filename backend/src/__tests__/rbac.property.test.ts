@@ -13,7 +13,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { requireRole } from '../middleware/rbacMiddleware';
+import { requireRole } from '../middleware/rbacMiddleware.js';
 import { Request, Response, NextFunction } from 'express';
 
 // Define the access rules mapping route prefixes to allowed roles

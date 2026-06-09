@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { env } from '../../config/environment.js';
-import { supabase } from '../../config/supabaseClient.js';
 
 const VISION_SERVER_URL = env.visionServerUrl;
 const DETECT_TIMEOUT = 15000; // 15 seconds
@@ -10,38 +9,10 @@ const SYNC_TIMEOUT_SHORT = 5000;
 const SYNC_TIMEOUT_LONG = 120000;
 
 /**
- * Resolve the best product image URL by prioritizing the "front" angle
- * from the `product_images` table, falling back to the first available image.
- */
-async function resolveProductImageUrl(product: any): Promise<string | null> {
-  try {
-    const { data: frontImg } = await supabase
-      .from('product_images')
-      .select('image_url')
-      .eq('product_id', product.id)
-      .eq('angle', 'front')
-      .maybeSingle();
-
-    if (frontImg) return frontImg.image_url;
-
-    if (!product.image_url) {
-      const { data: firstImg } = await supabase
-        .from('product_images')
-        .select('image_url')
-        .eq('product_id', product.id)
-        .limit(1);
-      if (firstImg && firstImg.length > 0) return firstImg[0].image_url;
-    }
-  } catch (err) {
-    console.warn('[VISION] product_images lookup failed:', err);
-  }
-  return product.image_url || null;
-}
-
-/**
  * POST /api/kasir/detect
- * AI product detection via YOLO-World + DINOv2 vision server.
- * Includes 15s timeout and graceful degradation.
+ * Legacy fallback proxy to the FastAPI Vision Server /detect (base64 JSON).
+ * The vision server now returns the v2 decision shape, so this is a thin
+ * pass-through — response fields are forwarded untouched.
  */
 export async function detect(req: Request, res: Response): Promise<void> {
   try {
@@ -63,48 +34,8 @@ export async function detect(req: Request, res: Response): Promise<void> {
       });
       clearTimeout(timeoutId);
 
-      const visionData = await visionRes.json();
-
-      if (visionRes.ok && visionData.success) {
-        const { label, confidence, similarity, bbox, source } = visionData;
-        console.log(
-          `[VISION] ✅ Detected '${label}' conf=${(confidence * 100).toFixed(1)}% sim=${similarity?.toFixed(2)} [${source}]`
-        );
-
-        // Enrich detection result with product data from Supabase
-        let product = visionData.product || null;
-        const productId = visionData.product_id || null;
-
-        if (label) {
-          try {
-            const query = productId
-              ? supabase.from('products').select('*').eq('id', productId).maybeSingle()
-              : supabase
-                  .from('products')
-                  .select('*')
-                  .or(`ai_label.eq.${label},sku.eq.${label},name.ilike.%${label}%`)
-                  .maybeSingle();
-            const { data } = await query;
-            if (data) {
-              product = data;
-              product.image_url = await resolveProductImageUrl(product);
-              console.log(`[VISION] 📦 Supabase: '${product.name}' Rp${product.price}`);
-            }
-          } catch (dbErr) {
-            console.warn('[VISION] DB lookup failed:', dbErr);
-          }
-        }
-
-        res.json({ success: true, source, label, confidence, similarity, bbox, product });
-        return;
-      }
-
-      // Vision server responded but found nothing
-      res.json({
-        success: false,
-        message: visionData.message || 'Tidak ada objek terdeteksi',
-        source: 'yolo+dino',
-      });
+      const visionData = await visionRes.json() as any;
+      res.status(visionRes.status).json(visionData);
     } catch (visionErr: any) {
       const isTimeout = visionErr.name === 'AbortError';
       const msg = isTimeout
@@ -200,7 +131,7 @@ export async function healthCheck(_req: Request, res: Response): Promise<void> {
     });
     clearTimeout(timeoutId);
 
-    const data = await visionRes.json();
+    const data = await visionRes.json() as any;
     res.json({ ...data, vision_server: 'online' });
   } catch {
     res.json({ status: 'degraded', vision_server: 'offline', message: 'Run: python vision_server.py' });
@@ -231,5 +162,230 @@ export async function sync(req: Request, res: Response): Promise<void> {
     res.json(data);
   } catch (err: any) {
     res.status(503).json({ success: false, message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+/**
+ * POST /api/kasir/vision/refresh-cache
+ * Trigger the Vision Server to reload its active-products cache from Supabase.
+ */
+export async function refreshCache(_req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SYNC_TIMEOUT_SHORT);
+
+    const visionRes = await fetch(`${VISION_SERVER_URL}/refresh-cache`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await visionRes.json();
+    res.status(visionRes.status).json(data);
+  } catch (err: any) {
+    res.status(503).json({ success: false, message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+/**
+ * POST /api/kasir/vision/build-dataset
+ * Start a dataset rebuild on the Vision Server (runs in background). Returns immediately.
+ */
+export async function buildDataset(req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SYNC_TIMEOUT_SHORT);
+
+    const visionRes = await fetch(`${VISION_SERVER_URL}/build-dataset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {}),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await visionRes.json();
+    res.status(visionRes.status).json(data);
+  } catch (err: any) {
+    res.status(503).json({ success: false, message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+/**
+ * GET /api/kasir/vision/build-status
+ * Poll the current dataset-build status from the Vision Server.
+ */
+export async function buildStatus(_req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT);
+
+    const visionRes = await fetch(`${VISION_SERVER_URL}/build-status`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await visionRes.json();
+    res.status(visionRes.status).json(data);
+  } catch (err: any) {
+    res.status(503).json({ state: 'offline', message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+/**
+ * POST /api/kasir/vision/train
+ * Start model training on the Vision Server (runs in background on the GPU machine).
+ */
+export async function trainModel(req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SYNC_TIMEOUT_SHORT);
+
+    const visionRes = await fetch(`${VISION_SERVER_URL}/train`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {}),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await visionRes.json();
+    res.status(visionRes.status).json(data);
+  } catch (err: any) {
+    res.status(503).json({ success: false, message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+/**
+ * GET /api/kasir/vision/train-status
+ * Poll the current training status from the Vision Server.
+ */
+export async function trainStatus(_req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT);
+
+    const visionRes = await fetch(`${VISION_SERVER_URL}/train-status`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await visionRes.json();
+    res.status(visionRes.status).json(data);
+  } catch (err: any) {
+    res.status(503).json({ state: 'offline', message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+/**
+ * GET /api/kasir/vision/train-log
+ * Poll recent training log lines from the Vision Server.
+ */
+export async function trainLog(_req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT);
+
+    const visionRes = await fetch(`${VISION_SERVER_URL}/train-log`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await visionRes.json();
+    res.status(visionRes.status).json(data);
+  } catch (err: any) {
+    res.status(503).json({ log: [], message: `Vision server unreachable: ${err.message}` });
+  }
+}
+/**
+ * POST /api/kasir/vision/evaluate
+ * Start source-held-out end-to-end scanner evaluation on the Vision Server.
+ */
+export async function startEvaluation(req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SYNC_TIMEOUT_SHORT);
+    const visionRes = await fetch(`${VISION_SERVER_URL}/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {}),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    res.status(visionRes.status).json(await visionRes.json());
+  } catch (err: any) {
+    res.status(503).json({ success: false, message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+export async function evaluationStatus(_req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT);
+    const visionRes = await fetch(`${VISION_SERVER_URL}/evaluation-status`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    res.status(visionRes.status).json(await visionRes.json());
+  } catch (err: any) {
+    res.status(503).json({ state: 'offline', message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+export async function evaluationReport(_req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT);
+    const visionRes = await fetch(`${VISION_SERVER_URL}/evaluation-report`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    res.status(visionRes.status).json(await visionRes.json());
+  } catch (err: any) {
+    res.status(503).json({ success: false, message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+/**
+ * POST /api/kasir/detect-v2
+ * Proxy endpoint to FastAPI Vision Server /detect-v2 with YOLO-World and ResNet-50.
+ */
+export async function detectV2(req: Request, res: Response): Promise<void> {
+  try {
+    const file = (req as any).file;
+    if (!file) {
+      res.status(400).json({ success: false, message: 'No image file provided' });
+      return;
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), DETECT_TIMEOUT);
+
+      const formData = new FormData();
+      const fileBlob = new Blob([file.buffer], { type: file.mimetype });
+      formData.append('file', fileBlob, file.originalname);
+
+      if (req.body.branch_id) formData.append('branch_id', req.body.branch_id);
+      if (req.body.camera_id) formData.append('camera_id', req.body.camera_id);
+      if (req.body.debug) formData.append('debug', req.body.debug);
+
+      const visionRes = await fetch(`${VISION_SERVER_URL}/detect-v2`, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const visionData = await visionRes.json() as any;
+      res.status(visionRes.status).json(visionData);
+    } catch (visionErr: any) {
+      const isTimeout = visionErr.name === 'AbortError';
+      const msg = isTimeout
+        ? 'Vision server timeout — pastikan vision server sudah berjalan'
+        : 'Vision server tidak dapat dijangkau';
+      console.warn(`[VISION-V2] ❌ ${msg}`);
+      res.status(503).json({ success: false, message: msg, source: 'vision-server-offline' });
+    }
+  } catch (error) {
+    console.error('[DETECT-V2] Detection endpoint error:', error);
+    res.status(500).json({ success: false, message: 'Detection system error' });
   }
 }

@@ -54,12 +54,18 @@ export default function AddProductPage() {
     right: null,
   });
 
-  const fileInputRefs = {
+  const fileInputRefs: Record<AngleKey, React.RefObject<HTMLInputElement | null>> = {
     front: useRef<HTMLInputElement>(null),
     back: useRef<HTMLInputElement>(null),
     left: useRef<HTMLInputElement>(null),
     right: useRef<HTMLInputElement>(null),
   };
+
+  // Product videos (extracted into many training frames on the server)
+  const [videoFiles, setVideoFiles] = useState<File[]>([]);
+  const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
+  const [existingVideos, setExistingVideos] = useState<{ url: string; filename?: string }[]>([]);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Camera states
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -109,20 +115,22 @@ export default function AddProductPage() {
         if (imgRes && imgRes.ok) {
           const imgData = await imgRes.json();
           if (imgData.status === 'success' && imgData.data) {
-            const previews: Record<string, string | null> = { front: null, back: null, left: null, right: null };
+            const validAngles = ANGLES.map(a => a.key as string);
+            const previews: Record<string, string | null> = Object.fromEntries(validAngles.map(a => [a, null]));
             for (const img of imgData.data) {
               const angle = img.angle as string;
               // Only use original photos (skip mirror versions)
-              if (['front', 'back', 'left', 'right'].includes(angle) && img.image_url && !previews[angle] && !img.filename?.startsWith('mirror-')) {
+              if (validAngles.includes(angle) && img.image_url && !previews[angle] && !img.filename?.startsWith('mirror-')) {
                 previews[angle] = img.image_url;
               }
             }
-            setImagePreviews({
-              front: previews.front || null,
-              back: previews.back || null,
-              left: previews.left || null,
-              right: previews.right || null,
-            });
+            setImagePreviews(prev => ({ ...prev, ...previews }));
+
+            // Show existing product videos (if any)
+            const videos = imgData.data
+              .filter((i: any) => i.angle === 'video' && i.image_url)
+              .map((i: any) => ({ url: i.image_url as string, filename: i.filename as string | undefined }));
+            setExistingVideos(videos);
           }
         }
       } catch (err) {
@@ -271,7 +279,26 @@ export default function AddProductPage() {
     if (ref.current) ref.current.value = '';
   };
 
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setVideoFiles(prev => [...prev, ...files]);
+    setVideoPreviews(prev => [...prev, ...files.map(file => URL.createObjectURL(file))]);
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  };
+
+  const handleRemoveNewVideo = (index: number) => {
+    setVideoPreviews(prev => {
+      const url = prev[index];
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== index);
+    });
+    setVideoFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const uploadedCount = Object.values(imageFiles).filter(Boolean).length;
+  const totalVideoCount = existingVideos.length + videoFiles.length;
 
   const autoLabel = useMemo(() => {
     if (!formData.name) return '';
@@ -300,7 +327,7 @@ export default function AddProductPage() {
       if (isEditMode && editId) {
         // ── EDIT MODE: Update product info + optional new images ──
         const rawPrice = formData.price.replace(/\./g, '');
-        const hasNewImages = Object.values(imageFiles).some(f => f !== null);
+        const hasNewImages = Object.values(imageFiles).some(f => f !== null) || videoFiles.length > 0;
 
         if (hasNewImages) {
           // Send as FormData with images
@@ -313,6 +340,9 @@ export default function AddProductPage() {
           for (const angle of ANGLES) {
             const file = imageFiles[angle.key];
             if (file) uploadFormData.append(angle.fieldName, file);
+          }
+          for (const file of videoFiles) {
+            uploadFormData.append('video', file);
           }
 
           const res = await fetch(`${BACKEND_URL}/api/shared/products/${editId}`, {
@@ -342,8 +372,11 @@ export default function AddProductPage() {
         setTimeout(() => navigate('/master-products'), 1000);
       } else {
         // ── CREATE MODE: New product ──
-        if (uploadedCount < 4) {
-          throw new Error(language === 'id' ? 'Mohon lengkapi ke-4 foto sudut produk (Depan, Belakang, Kiri, Kanan)' : 'Please complete all 4 product angle photos (Front, Back, Left, Right)');
+        if (uploadedCount < ANGLES.length) {
+          throw new Error(language === 'id' ? `Mohon lengkapi ke-${ANGLES.length} foto sudut produk` : `Please complete all ${ANGLES.length} product angle photos`);
+        }
+        if (videoFiles.length === 0) {
+          throw new Error(language === 'id' ? 'Mohon unggah minimal 1 video produk' : 'Please upload at least 1 product video');
         }
 
         const uploadFormData = new FormData();
@@ -357,6 +390,9 @@ export default function AddProductPage() {
         for (const angle of ANGLES) {
           const file = imageFiles[angle.key];
           if (file) uploadFormData.append(angle.fieldName, file);
+        }
+        for (const file of videoFiles) {
+          uploadFormData.append('video', file);
         }
 
         const response = await fetch(`${BACKEND_URL}/api/shared/products`, {
@@ -482,7 +518,7 @@ export default function AddProductPage() {
               <p className="text-sm font-medium text-gray-500 mt-1">
                 {isEditMode 
                   ? (language === 'id' ? 'Perbarui informasi produk Anda.' : 'Update your product information.') 
-                  : (language === 'id' ? 'Masukkan nama, harga, dan 4 foto produk Anda.' : 'Enter your product name, price, and 4 photos.')}
+                  : (language === 'id' ? `Masukkan nama, harga, dan ${ANGLES.length} foto produk Anda.` : `Enter your product name, price, and ${ANGLES.length} photos.`)}
               </p>
             </div>
           </div>
@@ -593,10 +629,10 @@ export default function AddProductPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2 rounded-full bg-indigo-50 border border-indigo-100 px-4 py-2">
-                <div className={`h-2.5 w-2.5 rounded-full shadow-sm ${uploadedCount === 4 ? 'bg-emerald-500 shadow-emerald-500/50' : uploadedCount > 0 ? 'bg-amber-500 shadow-amber-500/50' : 'bg-gray-300'}`} />
+                <div className={`h-2.5 w-2.5 rounded-full shadow-sm ${uploadedCount === ANGLES.length ? 'bg-emerald-500 shadow-emerald-500/50' : uploadedCount > 0 ? 'bg-amber-500 shadow-amber-500/50' : 'bg-gray-300'}`} />
                 <span className="text-xs font-black text-indigo-600">
                   {uploadedCount}
-                  {language === 'id' ? '/4 Foto Lengkap' : '/4 Photos Complete'}
+                  {language === 'id' ? `/${ANGLES.length} Foto Lengkap` : `/${ANGLES.length} Photos Complete`}
                 </span>
               </div>
             </div>
@@ -680,7 +716,72 @@ export default function AddProductPage() {
                 </div>
               ))}
             </div>
-            
+
+            {/* ── Product Video (extracted into many training frames) ── */}
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                  <Camera className="h-5 w-5 text-indigo-600" />
+                  {language === 'id' ? 'Video Produk' : 'Product Videos'}
+                </h3>
+                <span className={`text-xs font-bold ${totalVideoCount > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
+                  {totalVideoCount > 0
+                    ? (language === 'id' ? `${totalVideoCount} video siap` : `${totalVideoCount} videos ready`)
+                    : (language === 'id' ? 'Belum ada' : 'None')}
+                </span>
+              </div>
+              {totalVideoCount > 0 && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {existingVideos.map((video, index) => (
+                    <div key={`${video.url}-${index}`} className="overflow-hidden rounded-[24px] border-2 border-gray-200 bg-gray-50 shadow-sm">
+                      <video src={video.url} controls className="w-full max-h-56 bg-black object-contain" />
+                      <div className="px-4 py-3 text-xs font-bold text-gray-500">
+                        {language === 'id' ? 'Video tersimpan' : 'Saved video'} {index + 1}
+                        {video.filename ? ` - ${video.filename}` : ''}
+                      </div>
+                    </div>
+                  ))}
+                  {videoPreviews.map((preview, index) => (
+                    <div key={preview} className="relative overflow-hidden rounded-[24px] border-2 border-indigo-600 shadow-xl shadow-indigo-600/10">
+                      <video src={preview} controls className="w-full max-h-56 bg-black object-contain" />
+                      <Button
+                        type="button"
+                        onClick={() => handleRemoveNewVideo(index)}
+                        size="icon"
+                        variant="destructive"
+                        className="absolute top-3 right-3 h-10 w-10 rounded-full shadow-xl"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <div className="px-4 py-3 text-xs font-bold text-indigo-600">
+                        {language === 'id' ? 'Video baru' : 'New video'} {index + 1}: {videoFiles[index]?.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div
+                className="mt-4 flex flex-col items-center justify-center gap-3 rounded-[24px] border-2 border-dashed border-gray-200 bg-gray-50 p-10 cursor-pointer hover:bg-indigo-50/50 hover:border-indigo-300 transition-all"
+                onClick={() => videoInputRef.current?.click()}
+              >
+                <Upload className="h-7 w-7 text-gray-400" />
+                <p className="text-sm font-bold text-gray-500">
+                  {language === 'id' ? 'Unggah 1 atau beberapa video pendek (~15-20 dtk, produk 60-80% frame)' : 'Upload one or more short videos (~15-20s, product fills 60-80% of the frame)'}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {language === 'id' ? 'Sistem mengekstrak puluhan foto latih dari setiap video' : 'The system extracts dozens of training photos from each video'}
+                </p>
+              </div>
+              <input
+                type="file"
+                ref={videoInputRef}
+                accept="video/*"
+                multiple
+                onChange={handleVideoSelect}
+                className="hidden"
+              />
+            </div>
+
             <div className="mt-8 rounded-2xl bg-indigo-50/50 border border-indigo-100 p-5 flex gap-4 items-start">
                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm text-indigo-600 border border-indigo-100">
                  <Package className="w-5 h-5" />
@@ -690,9 +791,9 @@ export default function AddProductPage() {
                     {language === 'id' ? 'Panduan Foto' : 'Photo Guide'}
                   </h4>
                   <p className="text-xs font-semibold text-indigo-700/80 leading-relaxed">
-                    {language === 'id' 
-                      ? 'Pastikan produk difoto dalam kondisi terang tanpa objek lain di sekitarnya. Keempat sudut (Depan, Belakang, Kiri, Kanan) wajib diisi agar sistem AI dapat mengenali produk dengan akurat saat checkout.'
-                      : 'Ensure the product is photographed in bright conditions with no other objects around it. All four angles (Front, Back, Left, Right) are required for the AI system to recognize the product accurately during checkout.'}
+                    {language === 'id'
+                      ? `Pastikan produk difoto dalam kondisi terang tanpa objek lain di sekitarnya. Ke-${ANGLES.length} sudut (Depan, Belakang, Kiri, Kanan) + minimal 1 video wajib diisi agar sistem AI dapat mengenali produk dengan akurat saat checkout.`
+                      : `Ensure the product is photographed in bright conditions with no other objects around it. All ${ANGLES.length} angles (Front, Back, Left, Right) + at least 1 video are required for the AI system to recognize the product accurately during checkout.`}
                   </p>
                </div>
             </div>
@@ -701,7 +802,7 @@ export default function AddProductPage() {
           <div className="pt-4 pb-12">
             <Button
               type="submit"
-              disabled={isLoading || !formData.name || !formData.price || (!isEditMode && uploadedCount < 4)}
+              disabled={isLoading || !formData.name || !formData.price || (!isEditMode && (uploadedCount < ANGLES.length || videoFiles.length === 0))}
               className="h-16 w-full rounded-2xl bg-indigo-600 text-base font-black text-white shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-60 transition-all"
             >
               {isLoading ? (
@@ -714,7 +815,7 @@ export default function AddProductPage() {
               {isLoading 
                 ? (isEditMode 
                   ? (language === 'id' ? 'Menyimpan...' : 'Saving...') 
-                  : (language === 'id' ? 'Menyimpan & Mengunggah 4 Foto...' : 'Saving & Uploading 4 Photos...')) 
+                  : (language === 'id' ? 'Menyimpan & Mengunggah Media...' : 'Saving & Uploading Media...')) 
                 : isEditMode 
                   ? (language === 'id' ? 'Simpan Perubahan' : 'Save Changes') 
                   : (language === 'id' ? 'Simpan Produk Baru' : 'Save New Product')}

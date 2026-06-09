@@ -1,0 +1,55 @@
+[SERVER] Starting FastAPI server on http://127.0.0.1:5002...
+INFO:     Started server process [24736]
+INFO:     Waiting for application startup.
+[STARTUP] Initializing models and repositories...
+[REPOSITORY] Connecting to Supabase Client (https://zhghwaypdgpxlznkammt.supabase.co)...
+[REPOSITORY] Refreshing cache from Supabase products table...
+[REPOSITORY] Successfully cached 5 active AI products.
+[STARTUP] Loading YOLO-World model...
+[STARTUP] YOLO-World loaded successfully.
+[CLASSIFIER] Loading model from 'models/resnet50-product-classifier' on device: cuda
+Loading weights:   0%|          | 0/320 [00:00<?, ?it/s]Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 320/320 [00:00<00:00, 7483.11it/s]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5002 (Press CTRL+C to quit)
+[STARTUP] ResNet-50 Classifier loaded successfully.
+[OCR] Initializing EasyOCR Reader (languages=['id', 'en'], GPU=True)...
+[STARTUP] EasyOCR Verifier loaded successfully.
+INFO:     127.0.0.1:61517 - "GET /health HTTP/1.1" 200 OK
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: chiki_balls (confidence=0.9999, gap=0.9999)
+[OCR] Verification result: {'passed': False, 'reason': 'low_ocr_score', 'ocr_text': '8 1 6 { | [ | 1 8', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: ocr_mismatch)
+INFO:     127.0.0.1:56536 - "POST /detect-v2 HTTP/1.1" 200 OK
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: chiki_balls (confidence=0.9999, gap=0.9999)
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[OCR] Verification result: {'passed': False, 'reason': 'low_ocr_score', 'ocr_text': '8 1 6 { | [ | 1 8', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: ocr_mismatch)
+INFO:     127.0.0.1:56539 - "POST /detect-v2 HTTP/1.1" 200 OK
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: chiki_balls (confidence=0.9999, gap=0.9999)
+[LOG] Logged scan to Supabase (without source) for class 'chiki_balls' with decision: NEED_CONFIRMATION
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[OCR] Verification result: {'passed': False, 'reason': 'low_ocr_score', 'ocr_text': '8 1 6 { | [ | 1 8', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: ocr_mismatch)
+INFO:     127.0.0.1:56541 - "POST /detect-v2 HTTP/1.1" 200 OK
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[LOG] Logged scan to Supabase (without source) for class 'chiki_balls' with decision: NEED_CONFIRMATION
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[CLASSIFICATION] Predicted: background (confidence=0.9999, gap=0.9998)
+[DATABASE] Product mapping not found or disabled for class: background
+INFO:     127.0.0.1:56542 - "POST /detect-v2 HTTP/1.1" 200 OK
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: background (confidence=0.9999, gap=0.9998)
+[DATABASE] Product mapping not found or disabled for class: background
+INFO:     127.0.0.1:56543 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] Logged scan to Supabase (without source) for class 'chiki_balls' with decision: NEED_CONFIRMATION
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'background' with decision: REJECT
+[LOG] Logged scan to Supabase (without source) for class 'background' with decision: REJECT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: chiki_balls (confidence=0.9999, gap=0.9999)
+[OCR] Verification result: {'passed': False, 'reason': 'low_ocr_score', 'ocr_text': '8 1 6 { | [ | 1 8', 'score': 0.0}
+[DECISION] Result: NEED_CONFIRMATION (Reason: ocr_mismatch)
+INFO:     127.0.0.1:56550 - "POST /detect-v2 HTTP/1.1" 200 OK

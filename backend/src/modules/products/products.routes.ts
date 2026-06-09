@@ -6,6 +6,9 @@ import {
   createProduct,
   updateProductController,
   deleteProductController,
+  uploadBackground,
+  getBackground,
+  clearBackground,
 } from './product.controller.js';
 import { supabase, supabaseAdmin } from '../../config/supabaseClient.js';
 import {
@@ -15,7 +18,7 @@ import {
   rejectRequest,
   cancelRequest,
 } from './productRequests.controller.js';
-import { upload } from '../../middleware/upload.js';
+import { uploadMedia } from '../../middleware/upload.js';
 import { requireAuth } from '../../middleware/authMiddleware.js';
 import { requireRole } from '../../middleware/rbacMiddleware.js';
 
@@ -34,6 +37,12 @@ router.get('/:id/images', async (req, res) => {
     return res.status(500).json({ status: 'error', error: err.message });
   }
 });
+// ─── Background training media (must be BEFORE '/:id' to avoid being captured) ──
+const POS_ADMIN_ROLES = ['super_admin', 'branch_admin', 'admin'];
+router.get('/background', requireAuth, requireRole(POS_ADMIN_ROLES), getBackground);
+router.post('/background', requireAuth, requireRole(POS_ADMIN_ROLES), uploadMedia.array('files', 60), uploadBackground);
+router.delete('/background', requireAuth, requireRole(POS_ADMIN_ROLES), clearBackground);
+
 router.get('/:id', getProduct);
 
 // ─── Super Admin Only: Create / Edit / Delete master products ─────────────────
@@ -41,20 +50,22 @@ router.post(
   '/',
   requireAuth,
   requireRole(['super_admin', 'branch_admin', 'admin']),
-  upload.fields([
+  uploadMedia.fields([
     { name: 'imageLeft', maxCount: 1 },
     { name: 'imageRight', maxCount: 1 },
     { name: 'imageFront', maxCount: 1 },
     { name: 'imageBack', maxCount: 1 },
+    { name: 'video', maxCount: 10 },
   ]),
   createProduct
 );
 
-router.put('/:id', requireAuth, requireRole(['super_admin', 'branch_admin', 'admin']), upload.fields([
+router.put('/:id', requireAuth, requireRole(['super_admin', 'branch_admin', 'admin']), uploadMedia.fields([
   { name: 'imageLeft', maxCount: 1 },
   { name: 'imageRight', maxCount: 1 },
   { name: 'imageFront', maxCount: 1 },
   { name: 'imageBack', maxCount: 1 },
+  { name: 'video', maxCount: 10 },
 ]), updateProductController);
 router.delete('/:id', requireAuth, requireRole(['super_admin', 'branch_admin', 'admin']), deleteProductController);
 
@@ -67,11 +78,12 @@ router.post(
   '/requests',
   requireAuth,
   requireRole(['branch_admin', 'admin']),
-  upload.fields([
+  uploadMedia.fields([
     { name: 'imageLeft', maxCount: 1 },
     { name: 'imageRight', maxCount: 1 },
     { name: 'imageFront', maxCount: 1 },
     { name: 'imageBack', maxCount: 1 },
+    { name: 'video', maxCount: 10 },
   ]),
   submitRequest
 );

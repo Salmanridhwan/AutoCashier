@@ -1,0 +1,18 @@
+[SERVER] Starting FastAPI server on http://127.0.0.1:5002...
+INFO:     Started server process [17384]
+INFO:     Waiting for application startup.
+[STARTUP] Initializing models and repositories...
+[REPOSITORY] Connecting to Supabase Client (https://zhghwaypdgpxlznkammt.supabase.co)...
+[REPOSITORY] Refreshing cache from Supabase products table...
+[REPOSITORY] Successfully cached 5 active AI products.
+[STARTUP] Loading YOLO-World model...
+[STARTUP] YOLO-World loaded successfully.
+[CLASSIFIER] Loading model from 'models/resnet50-product-classifier' on device: cuda
+Loading weights:   0%|          | 0/320 [00:00<?, ?it/s]Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 320/320 [00:00<00:00, 11453.39it/s]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5002 (Press CTRL+C to quit)
+[STARTUP] ResNet-50 Classifier loaded successfully.
+[OCR] Initializing EasyOCR Reader (languages=['id', 'en'], GPU=True)...
+[STARTUP] EasyOCR Verifier loaded successfully.
+INFO:     127.0.0.1:58497 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58498 - "POST /build-dataset HTTP/1.1" 200 OK

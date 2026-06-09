@@ -24,7 +24,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 import request from 'supertest';
-import app from '../app';
+import app from '../app.js';
 
 // Generate a random path segment (1-10 chars, alphanumeric)
 const segmentArb = fc.string({ minLength: 1, maxLength: 10, unit: fc.constantFrom(

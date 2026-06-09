@@ -1,0 +1,41 @@
+[SERVER] Starting FastAPI server on http://127.0.0.1:5002...
+INFO:     Started server process [24256]
+INFO:     Waiting for application startup.
+[STARTUP] Initializing models and repositories...
+[REPOSITORY] Connecting to Supabase Client (https://zhghwaypdgpxlznkammt.supabase.co)...
+[REPOSITORY] Refreshing cache from Supabase products table...
+[REPOSITORY] Successfully cached 20 active AI products.
+[STARTUP] Loading YOLO-World model...
+[STARTUP] YOLO-World loaded successfully.
+[CLASSIFIER] Loading model from 'models/resnet50-product-classifier' on device: cuda
+Loading weights:   0%|          | 0/320 [00:00<?, ?it/s]Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 320/320 [00:00<00:00, 15155.74it/s]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5002 (Press CTRL+C to quit)
+[STARTUP] ResNet-50 Classifier loaded successfully.
+[OCR] Initializing EasyOCR Reader (languages=['id', 'en'], GPU=True)...
+[STARTUP] EasyOCR Verifier loaded successfully.
+INFO:     127.0.0.1:62532 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55227 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55228 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55227 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55228 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59201 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59202 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52925 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52926 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64355 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64356 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55323 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55324 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56670 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56671 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56218 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56219 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58828 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58829 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53406 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64894 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64895 - "GET /train-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64911 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64912 - "GET /train-status HTTP/1.1" 200 OK

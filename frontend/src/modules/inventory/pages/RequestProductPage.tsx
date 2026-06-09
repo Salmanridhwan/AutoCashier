@@ -34,7 +34,12 @@ export default function RequestProductPage() {
 
   const [imageFiles, setImageFiles] = useState<Record<AngleKey, File | null>>({ front: null, back: null, left: null, right: null });
   const [imagePreviews, setImagePreviews] = useState<Record<AngleKey, string | null>>({ front: null, back: null, left: null, right: null });
-  const fileInputRefs = { front: useRef<HTMLInputElement>(null), back: useRef<HTMLInputElement>(null), left: useRef<HTMLInputElement>(null), right: useRef<HTMLInputElement>(null) };
+  const fileInputRefs: Record<AngleKey, React.RefObject<HTMLInputElement | null>> = { front: useRef<HTMLInputElement>(null), back: useRef<HTMLInputElement>(null), left: useRef<HTMLInputElement>(null), right: useRef<HTMLInputElement>(null) };
+
+  // Product video (extracted into many training frames on the server)
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Camera states
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -99,6 +104,12 @@ export default function RequestProductPage() {
 
   const handleRemoveImage = (angle: AngleKey) => { setImageFiles(p => ({ ...p, [angle]: null })); setImagePreviews(p => ({ ...p, [angle]: null })); };
 
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) { setVideoFile(file); setVideoPreview(URL.createObjectURL(file)); }
+  };
+  const handleRemoveVideo = () => { setVideoFile(null); setVideoPreview(null); if (videoInputRef.current) videoInputRef.current.value = ''; };
+
   const uploadedCount = Object.values(imageFiles).filter(Boolean).length;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,10 +121,13 @@ export default function RequestProductPage() {
           language === 'id' ? 'Nama dan Harga wajib diisi' : 'Name and Price are required'
         );
       }
-      if (uploadedCount < 4) {
+      if (uploadedCount < ANGLES.length) {
         throw new Error(
-          language === 'id' ? 'Mohon lengkapi ke-4 foto sudut produk' : 'Please upload photos from all 4 angles'
+          language === 'id' ? `Mohon lengkapi ke-${ANGLES.length} foto sudut produk` : `Please upload photos from all ${ANGLES.length} angles`
         );
+      }
+      if (!videoFile) {
+        throw new Error(language === 'id' ? 'Mohon unggah 1 video produk' : 'Please upload 1 product video');
       }
 
       const fd = new FormData();
@@ -123,6 +137,7 @@ export default function RequestProductPage() {
       fd.append('description', formData.description);
       fd.append('unit', 'pcs');
       for (const angle of ANGLES) { const file = imageFiles[angle.key]; if (file) fd.append(angle.fieldName, file); }
+      fd.append('video', videoFile);
 
       const res = await fetch(`${BACKEND_URL}/api/shared/products/requests`, {
         method: 'POST',
@@ -241,8 +256,8 @@ export default function RequestProductPage() {
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('request.photosDesc')}</p>
                 </div>
                 <div className="flex items-center gap-2 rounded-full bg-indigo-50 border border-indigo-100 px-4 py-2">
-                  <div className={`h-2.5 w-2.5 rounded-full ${uploadedCount === 4 ? 'bg-emerald-500' : uploadedCount > 0 ? 'bg-amber-500' : 'bg-gray-300'}`} />
-                  <span className="text-xs font-black text-indigo-600">{uploadedCount}/4 {t('request.photos')}</span>
+                  <div className={`h-2.5 w-2.5 rounded-full ${uploadedCount === ANGLES.length ? 'bg-emerald-500' : uploadedCount > 0 ? 'bg-amber-500' : 'bg-gray-300'}`} />
+                  <span className="text-xs font-black text-indigo-600">{uploadedCount}/{ANGLES.length} {t('request.photos')}</span>
                 </div>
               </div>
 
@@ -280,11 +295,44 @@ export default function RequestProductPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Product video */}
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                    <Camera className="h-5 w-5 text-amber-600" />
+                    {language === 'id' ? 'Video Produk (Wajib)' : 'Product Video (Required)'}
+                  </h3>
+                  <span className={`text-xs font-bold ${videoFile ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    {videoFile ? (language === 'id' ? '✓ Video siap' : '✓ Video ready') : (language === 'id' ? 'Belum ada' : 'None')}
+                  </span>
+                </div>
+                {videoPreview ? (
+                  <div className="relative overflow-hidden rounded-[24px] border-2 border-amber-500 shadow-xl shadow-amber-500/10">
+                    <video src={videoPreview} controls className="w-full max-h-72 bg-black object-contain" />
+                    <Button type="button" onClick={handleRemoveVideo} size="icon" variant="destructive" className="absolute top-3 right-3 h-10 w-10 rounded-full shadow-xl">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-3 rounded-[24px] border-2 border-dashed border-gray-200 bg-gray-50 p-10 cursor-pointer hover:bg-amber-50/50 hover:border-amber-300 transition-all"
+                    onClick={() => videoInputRef.current?.click()}>
+                    <Upload className="h-7 w-7 text-gray-400" />
+                    <p className="text-sm font-bold text-gray-500">
+                      {language === 'id' ? 'Unggah video pendek (~15-20 dtk, putar produk pelan)' : 'Upload a short video (~15-20s, rotate the product slowly)'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {language === 'id' ? 'Sistem mengekstrak puluhan foto latih dari video ini' : 'The system extracts dozens of training photos from this video'}
+                    </p>
+                  </div>
+                )}
+                <input type="file" ref={videoInputRef} accept="video/*" onChange={handleVideoSelect} className="hidden" />
+              </div>
             </Card>
 
             {/* Submit */}
             <div className="pt-4 pb-12">
-              <Button type="submit" disabled={isLoading || !formData.name || !formData.price || uploadedCount < 4}
+              <Button type="submit" disabled={isLoading || !formData.name || !formData.price || uploadedCount < ANGLES.length || !videoFile}
                 className="h-16 w-full rounded-2xl bg-amber-600 text-base font-black text-white shadow-xl shadow-amber-600/20 hover:bg-amber-700 disabled:opacity-60 transition-all">
                 {isLoading ? <Loader2 className="h-6 w-6 animate-spin mr-3" /> : <Send className="h-6 w-6 mr-3" />}
                 {isLoading ? t('request.sending') : t('request.sendToAdmin')}

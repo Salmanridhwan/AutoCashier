@@ -33,7 +33,7 @@ export default function LoginPage() {
         login({
           username: response.data.username,
           role: response.data.role,
-          roleName: response.data.role === 'super_admin' ? 'Super Admin' : 'Branch Manager',
+          roleName: response.data.role === 'super_admin' ? 'Super Admin' : response.data.role === 'kasir' ? 'Kasir' : 'Branch Manager',
           location_id: response.data.location_id,
           token: response.data.token,
           email: response.data.email,
@@ -43,7 +43,8 @@ export default function LoginPage() {
         });
         // Success redirect
         localStorage.setItem('isAuthenticated', 'true');
-        navigate('/overview');
+        const targetRoute = response.data.role === 'kasir' ? '/kasir' : '/overview';
+        navigate(targetRoute);
       } else {
         setError(response.message || (language === 'id' ? 'Kredensial salah' : 'Invalid credentials'));
       }

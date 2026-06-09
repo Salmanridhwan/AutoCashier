@@ -1,0 +1,39 @@
+[SERVER] Starting FastAPI server on http://127.0.0.1:5002...
+INFO:     Started server process [20124]
+INFO:     Waiting for application startup.
+[STARTUP] Initializing models and repositories...
+[REPOSITORY] Connecting to Supabase Client (https://zhghwaypdgpxlznkammt.supabase.co)...
+[REPOSITORY] Refreshing cache from Supabase products table...
+[REPOSITORY] Successfully cached 19 active AI products.
+[STARTUP] Loading YOLO-World model...
+[STARTUP] YOLO-World loaded successfully.
+[CLASSIFIER] Loading model from 'models/resnet50-product-classifier' on device: cuda
+Loading weights:   0%|          | 0/320 [00:00<?, ?it/s]Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 320/320 [00:00<00:00, 20144.34it/s]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5002 (Press CTRL+C to quit)
+[STARTUP] ResNet-50 Classifier loaded successfully.
+[OCR] Initializing EasyOCR Reader (languages=['id', 'en'], GPU=True)...
+[STARTUP] EasyOCR Verifier loaded successfully.
+INFO:     127.0.0.1:53286 - "GET /health HTTP/1.1" 200 OK
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: oreo_original (confidence=1.0000, gap=1.0000)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:53287 - "POST /detect-v2 HTTP/1.1" 200 OK
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: keju_cake (confidence=1.0000, gap=1.0000)
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:53288 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'oreo_original' with decision: ACCEPT
+[LOG] Logged scan to Supabase (without source) for class 'keju_cake' with decision: ACCEPT
+[DETECTION] Crop successful: bbox=[895.48, 192.64, 1092.89, 854.72] confidence=0.80
+[CLASSIFICATION] Predicted: prima (confidence=0.9893, gap=0.9851)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:53290 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'prima' with decision: ACCEPT
+[DETECTION] YOLO found no objects. Using full image as fallback.
+[CLASSIFICATION] Predicted: nescafe_cappucino (confidence=1.0000, gap=1.0000)
+[DECISION] Result: NEED_CONFIRMATION (Reason: ocr_mismatch)
+INFO:     127.0.0.1:53291 - "POST /detect-v2 HTTP/1.1" 200 OK

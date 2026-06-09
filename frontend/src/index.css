@@ -173,3 +173,60 @@
     }
   }
 }
+
+/* ── POS scanner status animations ── */
+@keyframes scanY {
+  0% { top: 4%; }
+  100% { top: 96%; }
+}
+@keyframes posShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+@keyframes posPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes successDetectionIn {
+  0% { transform: translateY(18px) scale(0.92); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes successDetectionRing {
+  0% { transform: scale(0.7); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+  55% { transform: scale(1.06); box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes successDetectionProgress {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+.success-detection-card {
+  animation: successDetectionIn 0.35s ease-out both;
+}
+
+.success-detection-ring {
+  animation: successDetectionRing 0.7s ease-out both;
+}
+
+.success-detection-progress {
+  animation: successDetectionProgress 5s linear forwards;
+}
+
+.roi-scan-beam {
+  animation: scanY 2.4s ease-in-out infinite alternate;
+  will-change: top;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roi-scan-beam {
+    animation-duration: 4s;
+  }
+}

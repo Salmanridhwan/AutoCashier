@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { env } from '../config/environment';
+import { env } from '../config/environment.js';
 
 export function signToken(payload: object, expiresIn?: string | number) {
   const options = { expiresIn: expiresIn || env.jwtExpiresIn || '24h' } as jwt.SignOptions;

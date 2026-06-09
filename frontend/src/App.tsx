@@ -36,13 +36,16 @@ const BroadcastInboxPage= React.lazy(() => import('./modules/broadcasts/pages/Br
 const ProfilePage       = React.lazy(() => import('./modules/users/pages/ProfilePage'));
 const TransactionsPage  = React.lazy(() => import('./modules/transactions/pages/TransactionsPage'));
 const ReportPage        = React.lazy(() => import('./modules/dashboard/pages/ReportPage'));
+const CashierPage       = React.lazy(() => import('./modules/cashier/pages/CashierPage'));
+const AITrainingPage    = React.lazy(() => import('./modules/dashboard/pages/AITrainingPage'));
 
 // ─── Route guards ─────────────────────────────────────────────────────────────
 
 // Wrapper for layout with Sidebar/Header
 const ProtectedLayout = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role === 'kasir') return <Navigate to="/kasir" replace />;
   return (
     <LocationProvider>
       <React.Suspense fallback={<PageSkeleton />}>
@@ -60,7 +63,7 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
 };
 
 // Wrapper for role-based access control
-const RoleGuard = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: ('super_admin' | 'branch_admin' | 'admin')[] }) => {
+const RoleGuard = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: ('super_admin' | 'branch_admin' | 'admin' | 'kasir')[] }) => {
   const { user, isAuthenticated } = useAuth();
 
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
@@ -98,6 +101,7 @@ function AppRoutes() {
         <Route path="/users/create"    element={<ProtectedLayout><RoleGuard allowedRoles={['super_admin', 'admin', 'branch_admin']}><CreateUserPage /></RoleGuard></ProtectedLayout>} />
         <Route path="/broadcast"       element={<ProtectedLayout><RoleGuard allowedRoles={['super_admin', 'branch_admin', 'admin']}><BroadcastPage /></RoleGuard></ProtectedLayout>} />
         <Route path="/insights"        element={<ProtectedLayout><RoleGuard allowedRoles={['super_admin']}><AIInsightsPage /></RoleGuard></ProtectedLayout>} />
+        <Route path="/ai-training"     element={<ProtectedLayout><RoleGuard allowedRoles={['super_admin']}><AITrainingPage /></RoleGuard></ProtectedLayout>} />
         <Route path="/settings"        element={<ProtectedLayout><RoleGuard allowedRoles={['super_admin']}><UsersPage /></RoleGuard></ProtectedLayout>} />
 
         {/* Branch Admin Only */}
@@ -111,6 +115,7 @@ function AppRoutes() {
 
         {/* Report — standalone print view, no sidebar */}
         <Route path="/report" element={<AuthGuard><ReportPage /></AuthGuard>} />
+        <Route path="/kasir" element={<AuthGuard><LocationProvider><CashierPage /></LocationProvider></AuthGuard>} />
 
         <Route path="/" element={<Navigate to="/overview" replace />} />
       </Routes>

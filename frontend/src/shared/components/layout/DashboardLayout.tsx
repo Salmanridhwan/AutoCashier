@@ -22,6 +22,7 @@ import {
   Megaphone,
   BrainCircuit,
   MonitorCheck,
+  Cpu,
   Settings,
   Moon,
   Sun,
@@ -65,6 +66,7 @@ const SUPER_ADMIN_NAV = [
   {path: '/users', labelKey: 'nav.userManagement', icon: Users},
   {path: '/broadcast', labelKey: 'nav.broadcast', icon: Megaphone},
   {path: '/insights', labelKey: 'nav.aiInsights', icon: BrainCircuit},
+  {path: '/ai-training', labelKey: 'nav.aiTraining', icon: Cpu},
 ];
 
 const BRANCH_ADMIN_NAV = [

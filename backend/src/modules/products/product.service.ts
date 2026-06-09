@@ -4,7 +4,7 @@ import sharp from 'sharp';
 
 const STORAGE_BUCKET = 'product-images';
 
-const PRODUCT_COLUMNS = 'id, sku, name, price, stock, ai_label, category, image_url, created_at';
+const PRODUCT_COLUMNS = 'id, sku, name, price, stock, ai_label, category, image_url, ai_class_name, ai_enabled, ocr_keywords, created_at';
 
 export async function getAllProducts(): Promise<{ ok: boolean; data?: Product[]; error?: any }> {
   try {
@@ -53,6 +53,10 @@ export async function createProduct(payload: any) {
       ai_label: payload.ai_label ?? null,
       stock: payload.stock ?? 0,
     };
+    // AI fields (optional columns) — only include when provided
+    if (payload.ai_class_name !== undefined) safePayload.ai_class_name = payload.ai_class_name;
+    if (payload.ai_enabled !== undefined) safePayload.ai_enabled = payload.ai_enabled;
+    if (payload.ocr_keywords !== undefined) safePayload.ocr_keywords = payload.ocr_keywords;
 
     // Use .select().single() to get back the full created row
     const res: any = await client

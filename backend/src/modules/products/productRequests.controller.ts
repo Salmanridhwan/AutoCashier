@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabaseAdmin } from '../../config/supabaseClient.js';
 import * as productService from '../products/product.service.js';
 import { v4 as uuidv4 } from 'uuid';
+import { generateOcrKeywords } from './product-ai.utils.js';
 
 // ─── GET /api/product-requests ───────────────────────────────────────────────
 // Super Admin: get all requests. Branch Admin: get only their own.
@@ -72,7 +73,7 @@ export const submitRequest = async (req: Request, res: Response) => {
     // Generate unique ID for request
     const requestId = uuidv4();
 
-    // Upload all angle images to Supabase Storage
+    // Upload all angle images to Supabase Storage (4 main angles)
     const ANGLE_FIELDS = [
       { field: 'imageFront', angle: 'front' },
       { field: 'imageBack',  angle: 'back'  },
@@ -109,6 +110,16 @@ export const submitRequest = async (req: Request, res: Response) => {
 
       if (angle === 'front') {
         frontPublicUrl = uploadResult.url;
+      }
+    }
+
+    // ── Upload product video (for AI training frame extraction) ──
+    const videoFile = files?.['video']?.[0];
+    if (videoFile) {
+      const videoPath = `requests/${requestId}/video-${videoFile.originalname}`;
+      const videoUpload = await productService.uploadImageToStorage(videoFile.buffer, videoPath, videoFile.mimetype);
+      if (videoUpload.ok && videoUpload.url) {
+        imageEntries.push({ angle: 'video', filename: videoFile.originalname, storagePath: videoPath, imageUrl: videoUpload.url });
       }
     }
 
@@ -188,6 +199,7 @@ export const approveRequest = async (req: Request, res: Response) => {
     }
 
     // 1. Create product in master products table (marked as branch product)
+    const aiClassName = reqData.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
     const { data: productData, error: productErr } = await supabaseAdmin
       .from('products')
       .insert([{
@@ -196,7 +208,10 @@ export const approveRequest = async (req: Request, res: Response) => {
         category: finalCategory,
         price: finalPrice,
         image_url: reqData.image_url || null,
-        ai_label: reqData.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
+        ai_label: aiClassName,
+        ai_class_name: aiClassName,
+        ai_enabled: true,
+        ocr_keywords: generateOcrKeywords(reqData.name, aiClassName),
       }])
       .select()
       .single();
@@ -206,7 +221,7 @@ export const approveRequest = async (req: Request, res: Response) => {
     // Only link to requesting branch (not all branches)
     // Product will only appear in this branch's inventory
 
-    // Register all 4 angle images in product_images linked to the new product!
+    // Register all angle images in product_images linked to the new product!
     // Move images from requests/ folder to products/ folder
     if (imagesToRegister.length > 0) {
       const movedImages: any[] = [];
@@ -230,17 +245,19 @@ export const approveRequest = async (req: Request, res: Response) => {
             imageUrl: uploadResult.url
           });
 
-          // Generate mirror
-          const mirroredBuffer = await productService.mirrorImageBuffer(buffer, 'image/jpeg');
-          const mirrorPath = `products/${productData.id}/${img.angle}-mirror-${img.filename}`;
-          const mirrorUpload = await productService.uploadImageToStorage(mirroredBuffer, mirrorPath, 'image/jpeg');
-          if (mirrorUpload.ok && mirrorUpload.url) {
-            movedImages.push({
-              angle: img.angle,
-              filename: `mirror-${img.filename}`,
-              storagePath: mirrorPath,
-              imageUrl: mirrorUpload.url
-            });
+          // Generate mirror (skip for video entries — can't mirror a video with sharp)
+          if (img.angle !== 'video') {
+            const mirroredBuffer = await productService.mirrorImageBuffer(buffer, 'image/jpeg');
+            const mirrorPath = `products/${productData.id}/${img.angle}-mirror-${img.filename}`;
+            const mirrorUpload = await productService.uploadImageToStorage(mirroredBuffer, mirrorPath, 'image/jpeg');
+            if (mirrorUpload.ok && mirrorUpload.url) {
+              movedImages.push({
+                angle: img.angle,
+                filename: `mirror-${img.filename}`,
+                storagePath: mirrorPath,
+                imageUrl: mirrorUpload.url
+              });
+            }
           }
         } catch (err) {
           console.warn(`[approveRequest] Failed to move/mirror ${img.angle}:`, err);

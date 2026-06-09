@@ -4,7 +4,7 @@ import {LocationID} from '@/shared/lib/api';
 interface User {
   username: string;
   roleName: string;
-  role: 'super_admin' | 'branch_admin' | 'admin';
+  role: 'super_admin' | 'branch_admin' | 'admin' | 'kasir';
   location_id: LocationID;
   email?: string;
   whatsapp?: string;

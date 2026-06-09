@@ -1,0 +1,49 @@
+[SERVER] Starting FastAPI server on http://127.0.0.1:5002...
+INFO:     Started server process [15560]
+INFO:     Waiting for application startup.
+[STARTUP] Initializing models and repositories...
+[REPOSITORY] Connecting to Supabase Client (https://zhghwaypdgpxlznkammt.supabase.co)...
+[REPOSITORY] Refreshing cache from Supabase products table...
+[REPOSITORY] Successfully cached 19 active AI products.
+[STARTUP] Loading YOLO-World model...
+[STARTUP] YOLO-World loaded successfully.
+[CLASSIFIER] Loading model from 'models/resnet50-product-classifier' on device: cuda
+Loading weights:   0%|          | 0/320 [00:00<?, ?it/s]Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 320/320 [00:00<00:00, 3659.43it/s]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5002 (Press CTRL+C to quit)
+[STARTUP] ResNet-50 Classifier loaded successfully.
+[OCR] Initializing EasyOCR Reader (languages=['id', 'en'], GPU=True)...
+[STARTUP] EasyOCR Verifier loaded successfully.
+INFO:     127.0.0.1:55426 - "GET /health HTTP/1.1" 200 OK
+[DETECTION] Crop successful: bbox=[409.9, 361.37, 1884.23, 788.57] confidence=0.24
+[CLASSIFICATION] Predicted: keju_cake (confidence=0.9999, gap=0.9999)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:55427 - "POST /detect-v2 HTTP/1.1" 200 OK
+[DETECTION] Crop successful: bbox=[193.42, 200.05, 1722.58, 915.49] confidence=0.45
+[CLASSIFICATION] Predicted: keju_cake (confidence=1.0000, gap=1.0000)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:55435 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ❌ Failed to write log to Supabase: [WinError 10035] A non-blocking socket operation could not be completed immediately
+[LOG] ❌ Failed to write log to Supabase: [WinError 10035] A non-blocking socket operation could not be completed immediately
+[DETECTION] Crop successful: bbox=[338.74, 199.49, 1816.15, 941.21] confidence=0.51
+[CLASSIFICATION] Predicted: tango (confidence=1.0000, gap=1.0000)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:55437 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[DETECTION] Crop successful: bbox=[457.29, 129.74, 1471.04, 879.92] confidence=0.73
+[CLASSIFICATION] Predicted: nabati_coklat (confidence=0.9719, gap=0.9525)
+[LOG] Logged scan to Supabase (without source) for class 'tango' with decision: ACCEPT
+[DECISION] Result: NEED_CONFIRMATION (Reason: ocr_mismatch)
+INFO:     127.0.0.1:55444 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[DETECTION] Crop successful: bbox=[895.6, 192.69, 1092.83, 854.6] confidence=0.79
+[CLASSIFICATION] Predicted: prima (confidence=0.9910, gap=0.9869)
+[DECISION] Result: ACCEPT (Reason: high_confidence)
+INFO:     127.0.0.1:55447 - "POST /detect-v2 HTTP/1.1" 200 OK
+[LOG] Logged scan to Supabase (without source) for class 'nabati_coklat' with decision: NEED_CONFIRMATION
+[LOG] ⚠️ 'source' column not found in schema cache. Retrying without 'source' column...
+[LOG] Logged scan to Supabase (without source) for class 'prima' with decision: ACCEPT
+[DETECTION] Crop successful: bbox=[584.78, 2.03, 1376.73, 1028.12] confidence=0.66
+[CLASSIFICATION] Predicted: pop_mie_ayam_bawang (confidence=1.0000, gap=1.0000)
+[DATABASE] Product mapping not found or disabled for class: pop_mie_ayam_bawang
+INFO:     127.0.0.1:55450 - "POST /detect-v2 HTTP/1.1" 200 OK

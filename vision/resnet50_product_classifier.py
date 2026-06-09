@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from transformers import AutoImageProcessor, ResNetForImageClassification
+from temperature_scaling import load_temperature
 
 class ResNet50ProductClassifier:
     def __init__(self, model_dir="models/resnet50-product-classifier"):
@@ -14,51 +15,75 @@ class ResNet50ProductClassifier:
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"[CLASSIFIER] Loading model from '{model_dir}' on device: {self.device}")
+
+        if self.device.type == "cuda":
+            torch.backends.cudnn.benchmark = True
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
         
         self.image_processor = AutoImageProcessor.from_pretrained(model_dir)
         self.model = ResNetForImageClassification.from_pretrained(model_dir)
+        self.temperature = load_temperature(model_dir)
+        print(f"[CLASSIFIER] Temperature scaling: {self.temperature:.4f}")
         self.model.to(self.device)
+        if self.device.type == "cuda":
+            self.model.to(memory_format=torch.channels_last)
         self.model.eval()
 
-    def predict(self, image: Image.Image):
-        # Convert PIL Image to RGB mode if it isn't already
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-            
-        inputs = self.image_processor(image, return_tensors="pt")
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        
-        with torch.no_grad():
-            outputs = self.model(**inputs)
+    def predict_batch(self, images: list[Image.Image]):
+        if not images:
+            return []
+
+        rgb_images = [
+            image if image.mode == "RGB" else image.convert("RGB")
+            for image in images
+        ]
+        inputs = self.image_processor(rgb_images, return_tensors="pt")
+        if self.device.type == "cuda" and "pixel_values" in inputs:
+            inputs["pixel_values"] = inputs["pixel_values"].contiguous(memory_format=torch.channels_last)
+        inputs = {k: v.to(self.device, non_blocking=True) for k, v in inputs.items()}
+
+        with torch.inference_mode():
+            if self.device.type == "cuda":
+                autocast_ctx = torch.autocast(device_type="cuda", dtype=torch.float16)
+            else:
+                autocast_ctx = torch.autocast(device_type="cpu", enabled=False)
+            with autocast_ctx:
+                outputs = self.model(**inputs)
             logits = outputs.logits
-            probs = F.softmax(logits, dim=-1).squeeze(0)
-            
-        # Get top-5 predictions (or less if the total classes is less than 5)
-        num_classes = len(probs)
-        k = min(5, num_classes)
-        top_probs, top_indices = torch.topk(probs, k=k)
-        
-        top_results = []
-        for i in range(k):
-            class_id_int = int(top_indices[i].item())
-            class_name = self.model.config.id2label.get(class_id_int) or self.model.config.id2label.get(str(class_id_int)) or f"class_{class_id_int}"
-            confidence = float(top_probs[i].item())
-            top_results.append({
-                "class_name": class_name,
-                "confidence": round(confidence, 4)
-            })
-            
-        top_1 = top_results[0]
-        
-        # Calculate Gap (difference between top-1 and top-2)
-        if k > 1:
-            gap = float(top_probs[0].item() - top_probs[1].item())
-        else:
-            gap = float(top_probs[0].item())
-            
-        return {
-            "class_name": top_1["class_name"],
-            "confidence": round(top_1["confidence"], 4),
-            "gap": round(gap, 4),
-            "top_results": top_results
-        }
+            batch_probs = F.softmax(logits / self.temperature, dim=-1)
+
+        predictions = []
+        for probs in batch_probs:
+            num_classes = len(probs)
+            k = min(5, num_classes)
+            top_probs, top_indices = torch.topk(probs, k=k)
+            top_results = []
+            for index in range(k):
+                class_id = int(top_indices[index].item())
+                class_name = (
+                    self.model.config.id2label.get(class_id)
+                    or self.model.config.id2label.get(str(class_id))
+                    or f"class_{class_id}"
+                )
+                top_results.append(
+                    {
+                        "class_name": class_name,
+                        "confidence": round(float(top_probs[index].item()), 4),
+                    }
+                )
+
+            gap = float(top_probs[0].item() - top_probs[1].item()) if k > 1 else float(top_probs[0].item())
+            predictions.append(
+                {
+                    "class_name": top_results[0]["class_name"],
+                    "confidence": top_results[0]["confidence"],
+                    "gap": round(gap, 4),
+                    "top_results": top_results,
+                }
+            )
+
+        return predictions
+
+    def predict(self, image: Image.Image):
+        return self.predict_batch([image])[0]
