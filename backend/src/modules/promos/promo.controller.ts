@@ -3,8 +3,8 @@ import * as promoService from '../promos/promo.service.js';
 import { supabaseAdmin, supabase } from '../../config/supabaseClient.js';
 
 function getBranchAdminScope(req: Request): string | undefined {
-  const user = (req as any).user;
-  return user?.role === 'branch_admin' ? user.branch_id : undefined;
+  // Promos from Branch Admin are global, so we do not restrict their operations to a specific branch.
+  return undefined;
 }
 
 function promoErrorStatus(error: any): number {
@@ -42,7 +42,7 @@ export async function createPromoController(req: Request, res: Response) {
     scope: branchScope || req.body.scope || 'ALL',
     is_active: req.body.is_active !== undefined ? req.body.is_active : true,
     target_user_ids: req.body.target_user_ids || [],
-  });
+  }, branchScope);
 
   if (!result.ok) return res.status(500).json({ status: 'error', error: result.error });
   return res.status(201).json({ status: 'success', data: result.data });
@@ -146,7 +146,7 @@ export async function getPromoInsights(req: Request, res: Response) {
       data: {
         totalRedemption,
         growthWoW: 'Real-time',
-        campaignReach: `${reachPercentage}% Effectiveness`,
+        campaignReach: totalSent > 0 ? `${reachPercentage}% Effectiveness` : 'N/A',
         reachPercentage: reachPercentage,
         history: history || [],
         campaignStats
@@ -166,7 +166,8 @@ export async function validatePromoController(req: Request, res: Response) {
   try {
     const client = supabaseAdmin || supabase;
     const { code, total_price, user_id } = req.body;
-    const branchScope = getBranchAdminScope(req);
+    const user = (req as any).user;
+    const branchScope = user?.branch_id || getBranchAdminScope(req);
 
     if (!code || total_price === undefined) {
       return res.status(400).json({ status: 'error', error: 'MISSING_FIELDS' });

@@ -183,7 +183,7 @@ export default function TransactionsPage() {
       setTransactions(data);
       setPagination((prev) => ({ ...prev, ...(res.pagination ?? {}), page }));
 
-      setStats({
+      setStats(res.stats ?? {
         totalRevenue:   revenue,
         totalCount:     res.pagination?.total ?? data.length,
         avgOrder:       data.length > 0 ? revenue / data.length : 0,

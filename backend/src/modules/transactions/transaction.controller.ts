@@ -163,6 +163,44 @@ export async function getTransactions(req: Request, res: Response) {
     const { data, error, count } = await query;
     if (error) throw error;
 
+    // Calculate overall stats for all matching transactions
+    let statsQuery = db
+      .from('transactions')
+      .select('total_price, status');
+
+    if (user.role === 'branch_admin') {
+      statsQuery = statsQuery.eq('branch_id', user.branch_id);
+    } else if (user.role === 'super_admin' && branch_id && branch_id !== 'ALL') {
+      statsQuery = statsQuery.eq('branch_id', branch_id as string);
+    }
+
+    if (status)          statsQuery = statsQuery.eq('status', status as string);
+    if (payment_method)  statsQuery = statsQuery.eq('payment_method', payment_method as string);
+    if (start_date)      statsQuery = statsQuery.gte('created_at', start_date as string);
+    if (end_date)        statsQuery = statsQuery.lte('created_at', end_date as string);
+    if (search) {
+      statsQuery = statsQuery.or(
+        `invoice_number.ilike.%${search}%,order_number.ilike.%${search}%`,
+      );
+    }
+
+    const { data: allMatching } = await statsQuery;
+    let totalRevenue = 0;
+    let completedCount = 0;
+    let totalCount = 0;
+
+    if (allMatching) {
+      totalCount = allMatching.length;
+      allMatching.forEach((t: any) => {
+        totalRevenue += Number(t.total_price || 0);
+        if (t.status === 'completed') {
+          completedCount += 1;
+        }
+      });
+    }
+
+    const avgOrder = totalCount > 0 ? totalRevenue / totalCount : 0;
+
     return res.json({
       status: 'success',
       data: data ?? [],
@@ -172,6 +210,12 @@ export async function getTransactions(req: Request, res: Response) {
         total: count ?? 0,
         totalPages: Math.ceil((count ?? 0) / limitNum),
       },
+      stats: {
+        totalRevenue,
+        totalCount,
+        avgOrder,
+        completedCount
+      }
     });
   } catch (err: any) {
     console.error('[getTransactions]', err);
@@ -243,6 +287,19 @@ export async function checkout(req: Request, res: Response) {
         }
       }
 
+      // Branch scope check
+      const promoScope = promo.conditions?.scope || 'ALL';
+      const userObj = (req as any).user;
+      const branchIdObj = userObj?.branch_id || header.branch_id;
+      if (promoScope !== 'ALL' && branchIdObj && promoScope !== branchIdObj) {
+        return res.status(400).json({ status: 'error', error: 'PROMO_BRANCH_MISMATCH' });
+      }
+
+      // Individual user check
+      if (promo.user_id && (promo.user_id !== memberId || promo.is_used)) {
+        return res.status(400).json({ status: 'error', error: 'PROMO_USER_MISMATCH' });
+      }
+
       const isTargeted = await isUserTargeted(promoId, memberId);
       if (!isTargeted) {
         return res.status(403).json({ status: 'error', error: 'USER_NOT_TARGETED' });
@@ -252,6 +309,9 @@ export async function checkout(req: Request, res: Response) {
     }
 
     // Insert transaction header
+    const user = (req as any).user;
+    const branchId = user?.branch_id || header.branch_id || null;
+
     const { data: transaction, error: txError } = await db
       .from('transactions')
       .insert({
@@ -260,10 +320,11 @@ export async function checkout(req: Request, res: Response) {
         total_price:    header.total_price,
         payment_method: header.payment_method,
         status:         header.status || 'completed',
-        cashier_id:     header.cashier_id || null,
+        cashier_id:     user?.id || user?.sub || header.cashier_id || null,
         member_id:      memberId,
         receipt_url:    header.receipt_url || null,
         payment_status: header.payment_status || 'paid',
+        branch_id:      branchId,
         created_at:     getWIBTimestamp(),
       })
       .select()

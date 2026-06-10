@@ -137,6 +137,87 @@ export async function checkout(req: Request, res: Response): Promise<void> {
     const user = (req as any).user;
     const branchId = user?.branch_id || header?.branch_id;
 
+    // Validate promo if provided
+    if (header.promo_id) {
+      const { data: promo, error: promoErr } = await supabase
+        .from('member_promos')
+        .select('*')
+        .eq('id', header.promo_id)
+        .maybeSingle();
+
+      if (promoErr || !promo) {
+        res.status(400).json({ success: false, code: 'INVALID_PROMO', message: 'Promo tidak ditemukan' });
+        return;
+      }
+
+      if (promo.is_active === false) {
+        res.status(400).json({ success: false, code: 'PROMO_INACTIVE', message: 'Promo tidak aktif' });
+        return;
+      }
+
+      const now = new Date();
+      if (promo.starts_at && new Date(promo.starts_at) > now) {
+        res.status(400).json({ success: false, code: 'PROMO_NOT_STARTED', message: 'Promo belum dimulai' });
+        return;
+      }
+      if (promo.expires_at && new Date(promo.expires_at) < now) {
+        res.status(400).json({ success: false, code: 'PROMO_EXPIRED', message: 'Promo telah berakhir' });
+        return;
+      }
+
+      // Branch scope check
+      const promoScope = promo.conditions?.scope || 'ALL';
+      if (promoScope !== 'ALL' && branchId && promoScope !== branchId) {
+        res.status(400).json({ success: false, code: 'PROMO_BRANCH_MISMATCH', message: 'Promo tidak berlaku di cabang ini' });
+        return;
+      }
+
+      // Minimum purchase check
+      if (promo.min_purchase && Number(header.total_price) < Number(promo.min_purchase)) {
+        res.status(400).json({ success: false, code: 'MIN_PURCHASE_NOT_MET', message: 'Minimal pembelian tidak terpenuhi' });
+        return;
+      }
+
+      // Usage limit check
+      if (promo.usage_limit && (promo.usage_count || 0) >= promo.usage_limit) {
+        res.status(400).json({ success: false, code: 'PROMO_QUOTA_FULL', message: 'Kuota promo sudah habis' });
+        return;
+      }
+
+      // Per-user usage limit check
+      if (promo.per_user_limit && header.member_id) {
+        const { count } = await supabase
+          .from('promo_usages')
+          .select('*', { count: 'exact', head: true })
+          .eq('promo_id', promo.id)
+          .eq('user_id', header.member_id);
+
+        if (count && count >= promo.per_user_limit) {
+          res.status(400).json({ success: false, code: 'USER_PROMO_LIMIT_REACHED', message: 'Batas penggunaan promo per user telah tercapai' });
+          return;
+        }
+      }
+
+      // Individual user check
+      if (promo.user_id && (promo.user_id !== header.member_id || promo.is_used)) {
+        res.status(400).json({ success: false, code: 'PROMO_USER_MISMATCH', message: 'Promo tidak berlaku untuk pengguna ini atau sudah digunakan' });
+        return;
+      }
+
+      // Targeted user check
+      if (promo.target_type === 'SPECIFIC') {
+        const { count } = await supabase
+          .from('promo_target_users')
+          .select('*', { count: 'exact', head: true })
+          .eq('promo_id', promo.id)
+          .eq('user_id', header.member_id || '');
+        if (!count || count === 0) {
+          res.status(403).json({ success: false, code: 'USER_NOT_TARGETED', message: 'Promo ini tidak berlaku untuk pengguna ini' });
+          return;
+        }
+      }
+    }
+
     const stockPlanResult = await prepareBranchStockSale(branchId, items);
     if (!stockPlanResult.ok) {
       res.status(400).json({
@@ -157,6 +238,7 @@ export async function checkout(req: Request, res: Response): Promise<void> {
         {
           invoice_number: invoiceNumber,
           branch_id: branchId,
+          cashier_id: user?.id || user?.sub || header.cashier_id || null,
           member_id: header.member_id || null,
           total_price: header.total_price,
           payment_method: header.payment_method,

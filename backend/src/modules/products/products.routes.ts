@@ -49,7 +49,7 @@ router.get('/:id', getProduct);
 router.post(
   '/',
   requireAuth,
-  requireRole(['super_admin', 'branch_admin', 'admin']),
+  requireRole(['super_admin', 'admin']),
   uploadMedia.fields([
     { name: 'imageLeft', maxCount: 1 },
     { name: 'imageRight', maxCount: 1 },
@@ -60,14 +60,14 @@ router.post(
   createProduct
 );
 
-router.put('/:id', requireAuth, requireRole(['super_admin', 'branch_admin', 'admin']), uploadMedia.fields([
+router.put('/:id', requireAuth, requireRole(['super_admin', 'admin']), uploadMedia.fields([
   { name: 'imageLeft', maxCount: 1 },
   { name: 'imageRight', maxCount: 1 },
   { name: 'imageFront', maxCount: 1 },
   { name: 'imageBack', maxCount: 1 },
   { name: 'video', maxCount: 10 },
 ]), updateProductController);
-router.delete('/:id', requireAuth, requireRole(['super_admin', 'branch_admin', 'admin']), deleteProductController);
+router.delete('/:id', requireAuth, requireRole(['super_admin', 'admin']), deleteProductController);
 
 // ─── Product Requests (Branch Admin → Super Admin approval flow) ───────────────
 // GET all requests (super admin sees all; branch admin sees own)

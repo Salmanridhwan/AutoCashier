@@ -37,6 +37,7 @@ const BroadcastInboxPage= React.lazy(() => import('./modules/broadcasts/pages/Br
 const ProfilePage       = React.lazy(() => import('./modules/users/pages/ProfilePage'));
 const TransactionsPage  = React.lazy(() => import('./modules/transactions/pages/TransactionsPage'));
 const ReportPage        = React.lazy(() => import('./modules/dashboard/pages/ReportPage'));
+const InventoryReportPage = React.lazy(() => import('./modules/inventory/pages/InventoryReportPage'));
 const CashierPage       = React.lazy(() => import('./modules/cashier/pages/CashierPage'));
 const AITrainingPage    = React.lazy(() => import('./modules/dashboard/pages/AITrainingPage'));
 
@@ -117,7 +118,8 @@ function AppRoutes() {
 
         {/* Report — standalone print view, no sidebar */}
         <Route path="/report" element={<AuthGuard><ReportPage /></AuthGuard>} />
-        <Route path="/kasir" element={<AuthGuard><LocationProvider><CashierPage /></LocationProvider></AuthGuard>} />
+        <Route path="/inventory/report" element={<AuthGuard><InventoryReportPage /></AuthGuard>} />
+        <Route path="/kasir" element={<LocationProvider><CashierPage /></LocationProvider>} />
 
       </Routes>
     </React.Suspense>

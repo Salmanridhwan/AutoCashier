@@ -6,6 +6,7 @@ import { healthCheck, detect, detectV2 } from '../modules/vision/vision.controll
 import { upload } from '../middleware/upload.js';
 import { supabaseAdmin as supabase } from '../config/supabaseClient.js';
 import * as checkoutController from '../modules/kasir/checkout.controller.js';
+import { verifyToken } from '../utils/jwt.js';
 
 const router = Router();
 
@@ -119,15 +120,99 @@ router.get('/members/promos', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, message: 'user_id diperlukan' });
       return;
     }
-    const now = new Date().toISOString();
+
+    // Try to get branch ID from auth token
+    let branchId: string | null = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        const payload = verifyToken(token);
+        if (payload) {
+          branchId = (payload as any).branch_id;
+        }
+      } catch (e) {}
+    }
+    const branchIdFromQuery = req.query.branch_id as string | undefined;
+    if (!branchId && branchIdFromQuery) {
+      branchId = branchIdFromQuery;
+    }
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    // 1. Fetch targeted promo IDs
+    const { data: targeted } = await supabase
+      .from('promo_target_users')
+      .select('promo_id')
+      .eq('user_id', user_id);
+    const targetedIds = (targeted || []).map((t: any) => t.promo_id);
+
+    // 2. Fetch user usages
+    const { data: usages } = await supabase
+      .from('promo_usages')
+      .select('promo_id')
+      .eq('user_id', user_id);
+    const usageCounts = (usages || []).reduce((acc: Record<string, number>, u: any) => {
+      acc[u.promo_id] = (acc[u.promo_id] || 0) + 1;
+      return acc;
+    }, {});
+
+    // 3. Fetch all active or future-active promos
     const { data: promos, error } = await supabase
       .from('member_promos')
       .select('*')
-      .eq('user_id', user_id)
-      .eq('is_used', false)
-      .or(`expires_at.is.null,expires_at.gt.${now}`);
+      .eq('is_active', true)
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
+
+    console.log('[PROMOS DEBUG] user_id:', user_id, 'branchId:', branchId);
+    console.log('[PROMOS DEBUG] Raw query returned', promos?.length ?? 0, 'promos, error:', error);
+    if (promos && promos.length > 0) {
+      promos.forEach((p: any) => console.log('[PROMOS DEBUG] Promo:', p.id, p.code, 'target_type:', p.target_type, 'user_id:', p.user_id, 'is_active:', p.is_active, 'scope:', p.conditions?.scope));
+    }
+
     if (error) throw error;
-    res.json({ success: true, promos: promos || [] });
+
+    // 4. Filter promos
+    const eligiblePromos = (promos || []).filter((promo: any) => {
+      // Branch scope check (promo.conditions.scope)
+      const promoScope = promo.conditions?.scope || 'ALL';
+      if (promoScope !== 'ALL' && branchId && promoScope !== branchId) {
+        return false;
+      }
+
+      // Check if starts_at is in the future
+      if (promo.starts_at && new Date(promo.starts_at) > now) {
+        return false;
+      }
+
+      // Check usage limits
+      if (promo.usage_limit && (promo.usage_count || 0) >= promo.usage_limit) {
+        return false;
+      }
+
+      // Check per user limit
+      if (promo.per_user_limit) {
+        const userUsage = usageCounts[promo.id] || 0;
+        if (userUsage >= promo.per_user_limit) return false;
+      }
+
+      // If user_id is set on the promo (individually assigned):
+      if (promo.user_id) {
+        return promo.user_id === user_id && !promo.is_used;
+      }
+
+      // If targeted to specific users:
+      if (promo.target_type === 'SPECIFIC') {
+        return targetedIds.includes(promo.id);
+      }
+
+      return true;
+    });
+
+    console.log('[PROMOS DEBUG] After filter:', eligiblePromos.length, 'eligible promos');
+
+    res.json({ success: true, promos: eligiblePromos });
   } catch (error: any) {
     console.error('[PROMOS] Get error:', error);
     res.status(500).json({ success: false, message: 'Gagal mengambil promo', error: error.message });

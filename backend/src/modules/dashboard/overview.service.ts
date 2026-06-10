@@ -17,7 +17,8 @@ export async function getOverviewData(params: {
     location_id = 'ALL', 
     timeframe = 'weekly', 
     year = currentYearStr, 
-    month = currentMonthStr 
+    month = currentMonthStr,
+    week
   } = params;
   const isBranchFilter = location_id && location_id !== 'ALL';
 
@@ -44,17 +45,33 @@ export async function getOverviewData(params: {
       previousStart = new Date(yearNum, monthIdx - 1, 1);
       previousEnd = new Date(yearNum, monthIdx, 0, 23, 59, 59);
     } else {
-      // weekly - last 7 days
-      currentEnd = new Date();
-      currentStart = new Date();
-      currentStart.setDate(currentEnd.getDate() - 6);
-      currentStart.setHours(0,0,0,0);
-      
-      previousEnd = new Date(currentStart);
-      previousEnd.setMilliseconds(-1);
-      previousStart = new Date(previousEnd);
-      previousStart.setDate(previousEnd.getDate() - 6);
-      previousStart.setHours(0,0,0,0);
+      // weekly
+      if (week) {
+        // Parse the week number (e.g. "Week 20" -> 20)
+        const match = week.match(/\d+/);
+        const weekNum = match ? parseInt(match[0], 10) : 1;
+        const jan1 = new Date(yearNum, 0, 1);
+        
+        currentStart = new Date(jan1.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000);
+        currentStart.setHours(0, 0, 0, 0);
+        currentEnd = new Date(currentStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+        
+        previousStart = new Date(currentStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+        previousStart.setHours(0, 0, 0, 0);
+        previousEnd = new Date(currentStart.getTime() - 1);
+      } else {
+        // default - last 7 days
+        currentEnd = new Date();
+        currentStart = new Date();
+        currentStart.setDate(currentEnd.getDate() - 6);
+        currentStart.setHours(0, 0, 0, 0);
+        
+        previousEnd = new Date(currentStart);
+        previousEnd.setMilliseconds(-1);
+        previousStart = new Date(previousEnd);
+        previousStart.setDate(previousEnd.getDate() - 6);
+        previousStart.setHours(0, 0, 0, 0);
+      }
     }
 
     // ── 2. Revenue — filtered by branch if needed ──────────────────
@@ -298,7 +315,7 @@ export async function getOverviewData(params: {
     const productsList = Array.from(productStatsMap.values());
     const topProducts = [...productsList]
       .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
+      .slice(0, 50);
 
     const categoryStatsMap = new Map<string, { name: string; value: number }>();
     productsList.forEach(p => {

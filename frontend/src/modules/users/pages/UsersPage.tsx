@@ -86,7 +86,7 @@ export default function UsersPage() {
   }, []);
 
   const filteredUsers = users.filter(user => {
-    const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
+    const matchesRole = roleFilter === 'ALL' || (user.role && user.role.toLowerCase() === roleFilter.toLowerCase());
     const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          user.email.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesRole && matchesSearch;
@@ -253,7 +253,7 @@ export default function UsersPage() {
               <SelectItem value="ALL" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">{t('users.allRoles')}</SelectItem>
               <SelectItem value="Super Admin" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">{t('users.superAdmin')}</SelectItem>
               <SelectItem value="Branch Admin" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">{t('users.branchAdmin')}</SelectItem>
-              <SelectItem value="kasir" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">{t('users.cashier')}</SelectItem>
+              <SelectItem value="Kasir" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">{t('users.cashier')}</SelectItem>
               <SelectItem value="Member" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">{t('users.member')}</SelectItem>
             </SelectContent>
           </Select>
@@ -296,13 +296,13 @@ export default function UsersPage() {
                                      "p-2 rounded-xl shadow-sm",
                                      user.role === 'Super Admin' ? "bg-indigo-50 text-indigo-600" :
                                      user.role === 'Branch Admin' ? "bg-amber-50 text-amber-600" :
-                                     user.role === 'kasir' ? "bg-emerald-50 text-emerald-600" :
+                                     user.role?.toLowerCase() === 'kasir' ? "bg-emerald-50 text-emerald-600" :
                                      "bg-gray-100 text-gray-500"
                                    )}>
                                       <Shield className="w-4 h-4" />
                                    </div>
                                    <span className="text-xs font-black uppercase text-gray-700 tracking-wide">
-                                       {user.role === 'kasir' ? t('users.roleCashier') : user.role === 'Branch Admin' ? t('users.roleBranchAdmin') : user.role}
+                                       {user.role?.toLowerCase() === 'kasir' ? t('users.roleCashier') : user.role === 'Branch Admin' ? t('users.roleBranchAdmin') : user.role}
                                    </span>
                                 </div>
                              </td>
@@ -312,7 +312,7 @@ export default function UsersPage() {
                                       <MapPin className="w-3.5 h-3.5" />
                                    </div>
                                    <span className="text-xs font-bold text-gray-700">
-                                      {user.branch_name || '-'}
+                                      {user.location || '-'}
                                    </span>
                                 </div>
                              </td>
@@ -320,10 +320,10 @@ export default function UsersPage() {
                                 <div className="flex items-center gap-2">
                                    <div className={cn(
                                       "w-2 h-2 rounded-full",
-                                      user.status === 'active' ? "bg-emerald-500 animate-pulse" : "bg-gray-300"
+                                      (user.status || '').toLowerCase() === 'active' ? "bg-emerald-500 animate-pulse" : "bg-gray-300"
                                    )} />
                                    <span className="text-xs font-black text-gray-900 capitalize">
-                                      {user.status === 'active' ? t('users.statusActive') : t('users.statusInactive')}
+                                      {(user.status || '').toLowerCase() === 'active' ? t('users.statusActive') : t('users.statusInactive')}
                                    </span>
                                 </div>
                              </td>

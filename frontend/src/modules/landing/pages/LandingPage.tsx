@@ -112,7 +112,7 @@ export default function LandingPage() {
   const reduceMotion = useReducedMotion();
   const { isAuthenticated, user } = useAuth();
   const primaryPath = user?.role === 'kasir' ? '/kasir' : '/overview';
-  const primaryLabel = isAuthenticated ? 'Buka AutoCashier' : 'Mulai Belanja';
+  const primaryLabel = user?.role === 'kasir' ? 'Buka Scanner' : (isAuthenticated ? 'Buka Dashboard' : 'Mulai Belanja');
 
   const scrollTo = (id: string) => {
     setMenuOpen(false);
@@ -127,10 +127,8 @@ export default function LandingPage() {
       </>
     );
 
-    return isAuthenticated ? (
-      <Link to={primaryPath} className={className}>{content}</Link>
-    ) : (
-      <button type="button" onClick={() => scrollTo('cara-kerja')} className={className}>{content}</button>
+    return (
+      <Link to={isAuthenticated ? primaryPath : '/kasir'} className={className}>{content}</Link>
     );
   };
 
@@ -159,7 +157,10 @@ export default function LandingPage() {
                 to={primaryPath}
                 className="group flex h-10 items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700"
               >
-                Buka Dashboard
+                {user?.role === 'kasir' ? (
+                  <ScanLine className="size-4" />
+                ) : null}
+                {primaryLabel}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>
             ) : (

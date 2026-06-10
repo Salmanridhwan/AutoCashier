@@ -871,7 +871,6 @@ export default function MasterProductsPage() {
                       <th className="py-4 pl-6">{language === 'id' ? 'Produk' : 'Product'}</th>
                       <th className="py-4">SKU</th>
                       <th className="py-4">{language === 'id' ? 'Harga' : 'Price'}</th>
-                      <th className="py-4">{language === 'id' ? 'Stok' : 'Stock'}</th>
                       <th className="py-4">{language === 'id' ? 'Status AI' : 'AI Status'}</th>
                       <th className="py-4 text-right pr-6">{language === 'id' ? 'Aksi' : 'Action'}</th>
                     </tr>
@@ -920,21 +919,6 @@ export default function MasterProductsPage() {
                               <div className="flex flex-col">
                                 <span className="font-black text-gray-900 tracking-tight text-base">{formatCurrency(product.price)}</span>
                                 <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-1">{language === 'id' ? 'Aktif' : 'Active'}</span>
-                              </div>
-                            </td>
-
-                            <td className="py-4">
-                              <div className="flex items-center">
-                                {(product.stock ?? 0) < 20 ? (
-                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 font-mono text-sm font-bold shadow-sm">
-                                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
-                                    {product.stock ?? 0}
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 text-gray-600 border border-gray-200 font-mono text-sm font-bold">
-                                    {product.stock ?? 0}
-                                  </div>
-                                )}
                               </div>
                             </td>
 

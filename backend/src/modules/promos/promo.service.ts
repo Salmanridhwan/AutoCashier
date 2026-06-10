@@ -30,7 +30,7 @@ export async function getAllPromos(branchId?: string) {
   return { ok: !error, data: scopedData, error };
 }
 
-export async function createPromo(payload: any) {
+export async function createPromo(payload: any, branchId?: string) {
   const targetType = payload.target_user_ids && payload.target_user_ids.length > 0
     ? 'SPECIFIC'
     : 'ALL';
@@ -51,7 +51,7 @@ export async function createPromo(payload: any) {
     starts_at: payload.starts_at || null,
     conditions: {
       ...(payload.conditions || {}),
-      scope: payload.scope || 'ALL',
+      scope: branchId || payload.scope || 'ALL',
     },
     is_active: payload.is_active !== undefined ? payload.is_active : true,
     target_type: targetType,
@@ -126,7 +126,7 @@ export async function updatePromo(id: string, payload: any, branchId?: string) {
     starts_at: payload.starts_at || null,
     conditions: {
       ...(payload.conditions || {}),
-      scope: payload.scope || 'ALL',
+      scope: branchId || payload.scope || 'ALL',
     },
     target_type: targetType,
   };

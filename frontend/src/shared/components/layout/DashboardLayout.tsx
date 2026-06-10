@@ -170,8 +170,8 @@ export default function DashboardLayout({children}: {children: ReactNode}) {
                 type: 'lowstock',
                 title: t('notif.lowStock'),
                 preview: language === 'id'
-                  ? `Stok "${item.products?.name || 'Produk'}" sisa ${stock} pcs. Segera reorder!`
-                  : `Stock for "${item.products?.name || 'Product'}" is only ${stock} pcs left. Please reorder immediately!`,
+                  ? `Stok "${item.name || 'Produk'}" sisa ${stock} pcs. Segera reorder!`
+                  : `Stock for "${item.name || 'Product'}" is only ${stock} pcs left. Please reorder immediately!`,
                 time: 'Live',
                 icon: 'alert',
                 isRead: false,

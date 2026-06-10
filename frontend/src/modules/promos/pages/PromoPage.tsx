@@ -40,7 +40,7 @@ export default function PromoPage() {
     try {
       const [promosRes, insightsRes] = await Promise.all([
         fetchBackend('getPromos'),
-        fetch(`${BACKEND_URL}/api/admin/promos/insights`).then(r => r.json()),
+        fetchBackend('getPromoInsights'),
       ]);
       if (promosRes.status === 'success') setPromos(promosRes.data);
       if (insightsRes.status === 'success') setInsights(insightsRes.data);
@@ -189,7 +189,7 @@ export default function PromoPage() {
               </div>
             ) : filteredPromos.map(promo => {
               const isSelected = confirmDeleteId === promo.id;
-              const canManagePromo = isSuperAdmin || promo.scope === currentLocation;
+              const canManagePromo = isSuperAdmin || user?.role === 'branch_admin' || user?.role === 'admin' || promo.scope === currentLocation;
               return (
                 <StaggerItem
                   key={promo.id}

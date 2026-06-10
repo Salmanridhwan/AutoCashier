@@ -224,11 +224,11 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between">
           <Button 
             variant="ghost" 
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/overview')}
             className="text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 gap-2 rounded-full px-4 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />
-            {language === 'id' ? 'Kembali ke Dashboard' : 'Back to Dashboard'}
+            {language === 'id' ? 'Kembali ke Admin' : 'Back to Admin'}
           </Button>
           
           <AnimatePresence>
@@ -444,7 +444,7 @@ export default function ProfilePage() {
                 <Button 
                   variant="ghost" 
                   className="rounded-2xl h-14 px-8 font-bold text-gray-500 hover:bg-gray-100"
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/overview')}
                 >
                   {t('common.cancel')}
                 </Button>

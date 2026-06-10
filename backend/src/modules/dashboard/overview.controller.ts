@@ -4,6 +4,13 @@ import { getOverviewData } from './overview.service.js';
 export async function getOverview(req: Request, res: Response) {
   const { location_id, timeframe, year, month, week } = req.query as Record<string, string>;
   const user = (req as any).user;
+
+  if (user?.role === 'branch_admin') {
+    if (location_id && location_id !== 'ALL' && location_id !== user.branch_id) {
+      return res.status(403).json({ status: 'error', error: 'FORBIDDEN', message: 'Access denied to other branch data' });
+    }
+  }
+
   const scopedLocationId = user?.role === 'branch_admin' ? user.branch_id : location_id;
 
   if (user?.role === 'branch_admin' && !scopedLocationId) {

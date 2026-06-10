@@ -72,7 +72,7 @@ import { toast } from "sonner";
 
 export default function InventoryPage() {
   const navigate = useNavigate();
-  const {currentLocation, allBranches} = useLocation();
+  const {currentLocation, allBranches, locationName} = useLocation();
   const {user} = useAuth();
   const {t, language} = useLanguage();
   const [inventory, setInventory] = useState<any[]>([]);
@@ -85,6 +85,7 @@ export default function InventoryPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [comboboxSearch, setComboboxSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentItem, setCurrentItem] = useState<any>(null);
   const [uploadMode, setUploadMode] = useState<'file' | 'camera'>('file');
   const [form, setForm] = useState({ 
@@ -145,8 +146,19 @@ export default function InventoryPage() {
   };
 
   const handleExportPDF = () => {
-    const reportType = isSuperAdmin ? "Enterprise National Revenue" : "Branch Daily Sales Log";
-    alert(`Generating ${reportType}... Report focus: ${isSuperAdmin ? 'Branch Comparison' : 'Stock Replenishment Needs'}`);
+    const snapshot = {
+      inventory: filteredInventory,
+      branchName: currentLocation === 'ALL' ? (language === 'id' ? 'Semua Cabang (Konsolidasi)' : 'All Branches (Consolidated)') : locationName,
+      generatedAt: new Date().toLocaleString(language === 'id' ? 'id-ID' : 'en-US', {
+        day:    '2-digit',
+        month:  'long',
+        year:   'numeric',
+        hour:   '2-digit',
+        minute: '2-digit',
+      }),
+    };
+    sessionStorage.setItem('inventory_report_snapshot', JSON.stringify(snapshot));
+    navigate('/inventory/report');
   };
 
   const handleAdd = async () => {
@@ -275,6 +287,11 @@ export default function InventoryPage() {
     item.name.toLowerCase().includes(comboboxSearch.toLowerCase())
   );
 
+  const filteredInventory = (inventory || []).filter(item => 
+    (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.sku || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <PageTransition className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -316,25 +333,29 @@ export default function InventoryPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="rounded-[32px] border-none shadow-sm bg-indigo-600 text-white overflow-hidden relative">
-              <CardContent className="p-8">
-                <h4 className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{t('inventory.totalAssets')}</h4>
-                <div className="text-4xl font-black tracking-tighter font-mono">
-                  Rp {(inventory || []).reduce((acc, curr) => acc + ((curr.price || 0) * (curr.stock || 0)), 0).toLocaleString()}
-                </div>
-                <p className="text-white/40 text-[10px] font-bold mt-2 uppercase tracking-widest">{t('inventory.calculatedValue')}</p>
-              </CardContent>
-            </Card>
-            <Card className="rounded-[32px] border-none shadow-sm bg-white overflow-hidden">
-              <CardContent className="p-8">
-                <h4 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{t('inventory.lowStockAlerts')}</h4>
-                <div className="text-4xl font-black tracking-tighter font-mono text-rose-500">
-                  {(inventory || []).filter(i => (i.stock || 0) < 20).length} {t('inventory.items')}
-                </div>
-                <p className="text-gray-400 text-[10px] font-bold mt-2 uppercase tracking-widest">{t('inventory.requiresAttention')}</p>
-              </CardContent>
-            </Card>
+          <div className={`grid grid-cols-1 md:grid-cols-${currentLocation === 'ALL' ? '1' : '3'} gap-6`}>
+            {currentLocation !== 'ALL' && (
+              <>
+                <Card className="rounded-[32px] border-none shadow-sm bg-indigo-600 text-white overflow-hidden relative">
+                  <CardContent className="p-8">
+                    <h4 className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{t('inventory.totalAssets')}</h4>
+                    <div className="text-4xl font-black tracking-tighter font-mono">
+                      Rp {(inventory || []).reduce((acc, curr) => acc + ((curr.price || 0) * (curr.stock || 0)), 0).toLocaleString()}
+                    </div>
+                    <p className="text-white/40 text-[10px] font-bold mt-2 uppercase tracking-widest">{t('inventory.calculatedValue')}</p>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-[32px] border-none shadow-sm bg-white overflow-hidden">
+                  <CardContent className="p-8">
+                    <h4 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{t('inventory.lowStockAlerts')}</h4>
+                    <div className="text-4xl font-black tracking-tighter font-mono text-rose-500">
+                      {(inventory || []).filter(i => (i.stock || 0) < 20).length} {t('inventory.items')}
+                    </div>
+                    <p className="text-gray-400 text-[10px] font-bold mt-2 uppercase tracking-widest">{t('inventory.requiresAttention')}</p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
             <Card className="rounded-[32px] border-none shadow-sm bg-white overflow-hidden">
               <CardContent className="p-8">
                 <h4 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{t('inventory.skuCount')}</h4>
@@ -352,6 +373,8 @@ export default function InventoryPage() {
                     <Input 
                       placeholder={t('inventory.searchCatalog')} 
                       className="pl-12 h-12 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500/20"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                  </div>
                  <Button variant="ghost" size="icon" className="rounded-xl hover:bg-gray-50"><Filter className="w-4 h-4" /></Button>
@@ -365,13 +388,13 @@ export default function InventoryPage() {
                            <th className="py-4 pl-6">{t('inventory.product')}</th>
                            <th className="py-4">{t('inventory.sku')}</th>
                            <th className="py-4">{t('common.price')}</th>
-                           <th className="py-4">{t('common.stock')}</th>
+                           {currentLocation !== 'ALL' && <th className="py-4">{t('common.stock')}</th>}
                            <th className="py-4">{t('inventory.aiStatus')}</th>
                            <th className="py-4 text-right pr-6">{t('common.action')}</th>
                         </tr>
                      </thead>
                      <StaggerList as={motion.tbody} className="divide-y divide-gray-50">
-                        {(inventory || []).map((item) => (
+                        {(filteredInventory || []).map((item) => (
                            <StaggerItem as={motion.tr} key={item.id} className="group hover:bg-indigo-50/20 transition-colors border-b border-gray-50 last:border-0">
                               {/* Product Cell */}
                               <td className="py-4 pl-6">
@@ -417,20 +440,22 @@ export default function InventoryPage() {
                               </td>
 
                               {/* Stock Cell */}
-                              <td className="py-4">
-                                 <div className="flex items-center">
-                                    {(item.stock ?? 0) < 20 ? (
-                                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 font-mono text-sm font-bold shadow-sm">
-                                          <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
-                                          {item.stock ?? 0}
-                                       </div>
-                                    ) : (
-                                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 text-gray-600 border border-gray-200 font-mono text-sm font-bold">
-                                          {item.stock ?? 0}
-                                       </div>
-                                    )}
-                                 </div>
-                              </td>
+                              {currentLocation !== 'ALL' && (
+                                 <td className="py-4">
+                                    <div className="flex items-center">
+                                       {(item.stock ?? 0) < 20 ? (
+                                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 font-mono text-sm font-bold shadow-sm">
+                                             <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+                                             {item.stock ?? 0}
+                                          </div>
+                                       ) : (
+                                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 text-gray-600 border border-gray-200 font-mono text-sm font-bold">
+                                             {item.stock ?? 0}
+                                          </div>
+                                       )}
+                                    </div>
+                                 </td>
+                              )}
 
                               {/* AI Status Cell */}
                               <td className="py-4">

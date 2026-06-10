@@ -19,7 +19,14 @@ async function canManageUser(req: Request, res: Response, userId: string): Promi
     res.status(404).json({ status: 'error', message: 'User not found' });
     return false;
   }
-  if (result.data.role !== 'member' && result.data.branch_id !== branchId) {
+
+  const targetUser = result.data;
+  if (targetUser.role === 'super_admin' || targetUser.role === 'admin') {
+    res.status(403).json({ status: 'error', message: 'Cannot manage administrative users' });
+    return false;
+  }
+
+  if (targetUser.branch_id && targetUser.branch_id !== branchId) {
     res.status(403).json({ status: 'error', message: 'Cannot access users from another branch' });
     return false;
   }
@@ -47,12 +54,21 @@ export async function getUsers(req: Request, res: Response) {
 
 export async function createUser(req: Request, res: Response) {
   const { name, email, role, password, branchId } = req.body;
+  const loggedInUser = (req as any).user;
   
   if (!name || !email || !role || !password) {
     return res.status(400).json({ status: 'error', message: 'Missing required fields' });
   }
 
-  const result = await userService.createUser(scopeUserPayload(req, { name, email, role, password, branchId }));
+  if (loggedInUser?.role === 'branch_admin') {
+    const targetRole = String(role || '').toLowerCase().replace(' ', '_');
+    if (targetRole === 'super_admin' || targetRole === 'admin' || targetRole === 'branch_admin') {
+      return res.status(403).json({ status: 'error', message: 'Branch Admin cannot create Super Admin, Admin, or Branch Admin users' });
+    }
+    req.body.branchId = loggedInUser.branch_id;
+  }
+
+  const result = await userService.createUser(scopeUserPayload(req, { name, email, role, password, branchId: req.body.branchId }));
   if (result.ok) {
     return res.status(201).json({ status: 'success', data: result.data });
   }
@@ -61,7 +77,20 @@ export async function createUser(req: Request, res: Response) {
 
 export async function updateUser(req: Request, res: Response) {
   const { id } = req.params;
+  const loggedInUser = (req as any).user;
+  
   if (!(await canManageUser(req, res, id))) return;
+
+  if (loggedInUser?.role === 'branch_admin') {
+    if (req.body.role) {
+      const targetRole = String(req.body.role || '').toLowerCase().replace(' ', '_');
+      if (targetRole === 'super_admin' || targetRole === 'admin' || targetRole === 'branch_admin') {
+        return res.status(403).json({ status: 'error', message: 'Branch Admin cannot update users to Super Admin, Admin, or Branch Admin' });
+      }
+    }
+    req.body.branchId = loggedInUser.branch_id;
+  }
+
   const updates = scopeUserPayload(req, req.body);
 
   const result = await userService.updateUser(id, updates);

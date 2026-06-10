@@ -18,6 +18,8 @@ import {cn} from '@/shared/lib/utils';
 import {useLanguage} from '@/shared/context/LanguageContext';
 import PageTransition from '@/shared/components/ui/PageTransition';
 
+const LOW_STOCK_THRESHOLD = 20;
+
 export default function AIAnalysisPage() {
   const {currentLocation, locationName} = useLocation();
   const {t, language} = useLanguage();
@@ -68,7 +70,7 @@ export default function AIAnalysisPage() {
     setTimeout(() => {
       setIsAnalyzing(false);
       
-      const lowStockItems = inventory.filter(i => (i.stock || 0) < 20);
+      const lowStockItems = inventory.filter(i => (i.stock || 0) < LOW_STOCK_THRESHOLD);
       const skuCount = inventory.length;
       const totalVal = inventory.reduce((acc, curr) => acc + ((curr.price || 0) * (curr.stock || 0)), 0);
       const healthScore = skuCount > 0 ? Math.round(((skuCount - lowStockItems.length) / skuCount) * 100) : 100;
@@ -116,8 +118,8 @@ ${lowStockReport}
 
 **Saran Strategis yang Dapat Ditindaklanjuti:**
 1. **Prioritas Restock:** ${actionableReorder}
-2. **Fokus Promosi:** Luncurkan paket reward pelanggan yang bergerak cepat dengan memusatkan pada kategori berkinerja terbaik Anda (**${categories[0] || 'Kopi'}**) untuk meningkatkan ukuran keranjang pelanggan rata-rata.
-3. **Alokasi Staf:** Deploy penjadwalan barista yang dioptimalkan selama lalu lintas operasional puncak (lonjakan yang diprediksi pada 08:00 - 10:00 dan 15:00 - 17:00) untuk memaksimalkan throughput transaksi hingga 15%.` : `### **STRATEGIC AI OPERATIONS REPORT: ${locationName.toUpperCase()}**
+2. **Fokus Promosi:** Luncurkan paket reward pelanggan yang bergerak cepat dengan memusatkan pada kategori berkinerja terbaik Anda (**${categories.length > 0 ? categories[0] : 'Produk Utama'}**) untuk meningkatkan ukuran keranjang pelanggan rata-rata.
+3. **Alokasi Staf:** Deploy penjadwalan barista yang dioptimalkan selama lalu lintas operasional puncak (berdasarkan lonjakan volume transaksi historis) untuk memaksimalkan throughput transaksi hingga 15%.` : `### **STRATEGIC AI OPERATIONS REPORT: ${locationName.toUpperCase()}**
 
 **Executive Summary:**
 Local branch **${locationName}** has completed a real-time database audit. The operations are currently performing at **${healthScore}% health efficiency**, backed by live database verification.
@@ -137,8 +139,8 @@ ${lowStockReport}
 
 **Actionable Strategic Advice:**
 1. **Restock Priority:** ${actionableReorder}
-2. **Promotional Focus:** Launch a fast-moving customer reward bundle centering on your top-performing categories (**${categories[0] || 'Coffee'}**) to increase average customer cart size.
-3. **Staff Allocation:** Deploy optimized barista scheduling during peak operational traffic (predicted spike at 08:00 - 10:00 and 15:00 - 17:00) to maximize transaction throughput by up to 15%.`;
+2. **Promotional Focus:** Launch a fast-moving customer reward bundle centering on your top-performing categories (**${categories.length > 0 ? categories[0] : 'Main Products'}**) to increase average customer cart size.
+3. **Staff Allocation:** Deploy optimized barista scheduling during peak operational traffic (predicted spike based on historical transaction volumes) to maximize transaction throughput by up to 15%.`;
 
       setChatMessages(prev => [...prev, { role: 'ai', content: reportContent }]);
       
@@ -169,13 +171,13 @@ ${lowStockReport}
       const matchedProducts = inventory.filter(i => i.name.toLowerCase().includes(query) || (i.category && i.category.toLowerCase().includes(query)));
       
       if (query.includes('stok') || query.includes('stock') || query.includes('reorder') || query.includes('tipis') || query.includes('sedikit')) {
-        const lowStock = inventory.filter(i => (i.stock || 0) < 20);
+        const lowStock = inventory.filter(i => (i.stock || 0) < LOW_STOCK_THRESHOLD);
         if (lowStock.length > 0) {
           matchedReply = language === 'id'
-            ? `Saya mendeteksi **${lowStock.length} produk** dengan stok di bawah batas aman (< 20 unit):\n\n` +
+            ? `Saya mendeteksi **${lowStock.length} produk** dengan stok di bawah batas aman (< ${LOW_STOCK_THRESHOLD} unit):\n\n` +
               lowStock.map(i => `* **${i.name}**: ${i.stock} unit (Rp ${i.price.toLocaleString('id-ID')})`).join('\n') + 
               `\n\nDirekomendasikan untuk segera melakukan pengisian ulang.`
-            : `I detected **${lowStock.length} products** with stock below the safe margin (< 20 units):\n\n` +
+            : `I detected **${lowStock.length} products** with stock below the safe margin (< ${LOW_STOCK_THRESHOLD} units):\n\n` +
               lowStock.map(i => `* **${i.name}**: ${i.stock} units (Rp ${i.price.toLocaleString('id-ID')})`).join('\n') + 
               `\n\nIt is recommended to restock immediately.`;
         } else {
@@ -189,29 +191,29 @@ ${lowStockReport}
           ? `Berdasarkan data riil di database Anda untuk **${locationName}**:\n` +
             `* **Total SKU Aktif:** ${inventory.length}\n` +
             `* **Total Nilai Aset Inventaris:** Rp ${totalVal.toLocaleString('id-ID')}\n` +
-            `* **Status Kesehatan:** ${inventory.filter(i => i.stock < 20).length > 0 ? 'Perlu perhatian khusus pada beberapa item.' : 'Sangat Sehat.'}`
+            `* **Status Kesehatan:** ${inventory.filter(i => i.stock < LOW_STOCK_THRESHOLD).length > 0 ? 'Perlu perhatian khusus pada beberapa item.' : 'Sangat Sehat.'}`
           : `Based on real data in your database for **${locationName}**:\n` +
             `* **Total Active SKU:** ${inventory.length}\n` +
             `* **Total Inventory Asset Value:** Rp ${totalVal.toLocaleString('id-ID')}\n` +
-            `* **Health Status:** ${inventory.filter(i => i.stock < 20).length > 0 ? 'Requires special attention on some items.' : 'Very Healthy.'}`;
+            `* **Health Status:** ${inventory.filter(i => i.stock < LOW_STOCK_THRESHOLD).length > 0 ? 'Requires special attention on some items.' : 'Very Healthy.'}`;
       } else if (matchedProducts.length > 0) {
         matchedReply = language === 'id'
           ? `Saya menemukan produk berikut di database **${locationName}** yang cocok dengan pencarian Anda:\n\n` +
-            matchedProducts.slice(0, 5).map(i => `* **${i.name}**\n  - Kategori: ${i.category}\n  - Stok saat ini: **${i.stock}** unit\n  - Harga satuan: **Rp ${i.price.toLocaleString('id-ID')}**\n  - Status: ${i.stock < 20 ? '🔴 KRITIS (perlu restock)' : '🟢 AMAN'}`).join('\n\n')
+            matchedProducts.slice(0, 5).map(i => `* **${i.name}**\n  - Kategori: ${i.category}\n  - Stok saat ini: **${i.stock}** unit\n  - Harga satuan: **Rp ${i.price.toLocaleString('id-ID')}**\n  - Status: ${i.stock < LOW_STOCK_THRESHOLD ? '🔴 KRITIS (perlu restock)' : '🟢 AMAN'}`).join('\n\n')
           : `I found the following products in the **${locationName}** database that match your search:\n\n` +
-            matchedProducts.slice(0, 5).map(i => `* **${i.name}**\n  - Category: ${i.category}\n  - Current Stock: **${i.stock}** units\n  - Unit Price: **Rp ${i.price.toLocaleString('id-ID')}**\n  - Status: ${i.stock < 20 ? '🔴 CRITICAL (needs restock)' : '🟢 SAFE'}`).join('\n\n');
+            matchedProducts.slice(0, 5).map(i => `* **${i.name}**\n  - Category: ${i.category}\n  - Current Stock: **${i.stock}** units\n  - Unit Price: **Rp ${i.price.toLocaleString('id-ID')}**\n  - Status: ${i.stock < LOW_STOCK_THRESHOLD ? '🔴 CRITICAL (needs restock)' : '🟢 SAFE'}`).join('\n\n');
       } else {
         matchedReply = language === 'id'
           ? `Saya telah memproses pertanyaan Anda tentang **"${currentInput}"** di cabang **${locationName}**.\n\n` +
             `Berdasarkan data real-time database kami:\n` +
             `* Kami memonitor **${inventory.length} SKU** secara aktif.\n` +
             `* Total nilai stok tersimpan sebesar **Rp ${inventory.reduce((a, c) => a + (c.price * c.stock), 0).toLocaleString('id-ID')}**.\n` +
-            `* Tidak ditemukan produk spesifik dengan nama/kategori tersebut. Coba cari produk lain seperti kopi, pastry, cake, atau tanyakan tentang 'stok tipis' dan 'nilai aset'.`
+            `* Tidak ditemukan produk spesifik dengan nama/kategori tersebut. Coba cari produk lain atau tanyakan tentang 'stok tipis' dan 'nilai aset'.`
           : `I have processed your question about **"${currentInput}"** in the **${locationName}** branch.\n\n` +
             `Based on our real-time database data:\n` +
             `* We actively monitor **${inventory.length} SKU**.\n` +
             `* Total stored stock value is **Rp ${inventory.reduce((a, c) => a + (c.price * c.stock), 0).toLocaleString('id-ID')}**.\n` +
-            `* No specific product was found with that name/category. Try searching for other products like coffee, pastry, cake, or ask about 'depleting stock' and 'asset value'.`;
+            `* No specific product was found with that name/category. Try searching for other products or ask about 'depleting stock' and 'asset value'.`;
       }
 
       setChatMessages(prev => [...prev, { 

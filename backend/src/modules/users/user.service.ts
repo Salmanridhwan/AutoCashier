@@ -15,7 +15,7 @@ export async function getAllUsers(branchId?: string) {
         username,
         avatar_url,
         branch_id,
-        branches (
+        branches!users_branch_id_fkey (
           name
         ),
         member_points (

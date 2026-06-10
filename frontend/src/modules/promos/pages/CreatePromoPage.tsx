@@ -48,7 +48,7 @@ export default function CreatePromoPage() {
     setLoadingUsers(true);
     fetchBackend('getUsers').then(res => {
       if (res.status === 'success' && res.data) {
-        const membersOnly = res.data.filter((u: any) => u.role === 'member');
+        const membersOnly = res.data.filter((u: any) => (u.role || '').toLowerCase() === 'member');
         setUsersList(membersOnly);
       }
     }).finally(() => setLoadingUsers(false));
@@ -82,8 +82,8 @@ export default function CreatePromoPage() {
               discount: d.discount_value?.toString() || '',
               maxDiscount: d.max_discount?.toString() || '',
               minPurchase: d.min_purchase?.toString() || '',
-              startsAt: d.starts_at ? new Date(d.starts_at).toISOString().slice(0,16) : '',
-              expiresAt: d.expires_at ? new Date(d.expires_at).toISOString().slice(0,16) : '',
+              startsAt: d.starts_at ? new Date(new Date(d.starts_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16) : '',
+              expiresAt: d.expires_at ? new Date(new Date(d.expires_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16) : '',
               usageLimit: d.usage_limit?.toString() || '',
               perUserLimit: d.per_user_limit?.toString() || '',
               scope: d.scope || 'ALL',
@@ -114,7 +114,7 @@ export default function CreatePromoPage() {
     }
     const scope = isSuperAdmin
       ? (branchTargetType === 'ALL' ? 'ALL' : form.scope)
-      : currentLocation;
+      : 'ALL';
 
     setIsLoading(true);
     try {
@@ -126,8 +126,8 @@ export default function CreatePromoPage() {
         discount_value: Number(form.discount),
         max_discount: form.maxDiscount ? Number(form.maxDiscount) : undefined,
         min_purchase: form.minPurchase ? Number(form.minPurchase) : undefined,
-        starts_at: form.startsAt || undefined,
-        expires_at: form.expiresAt || undefined,
+        starts_at: form.startsAt ? new Date(form.startsAt).toISOString() : undefined,
+        expires_at: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,
         usage_limit: form.usageLimit ? Number(form.usageLimit) : undefined,
         per_user_limit: form.perUserLimit ? Number(form.perUserLimit) : undefined,
         scope,

@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {Card, CardContent} from '@/shared/components/ui/card';
 import {Button} from '@/shared/components/ui/button';
 import {Input} from '@/shared/components/ui/input';
@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   Calendar,
   X,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import {
   Dialog,
@@ -23,90 +24,90 @@ import {motion, AnimatePresence} from 'motion/react';
 import { useLanguage } from '@/shared/context/LanguageContext';
 import PageTransition from '@/shared/components/ui/PageTransition';
 import { StaggerList, StaggerItem } from '@/shared/components/ui/StaggerList';
+import { fetchBackend } from '@/shared/lib/api';
 
-const getMockMessages = (lang: string) => [
-  {
-    id: '1',
-    title: lang === 'id' ? 'Pemeliharaan Sistem Terjadwal' : 'System Maintenance Window',
-    preview: lang === 'id' ? 'Sinkronisasi cloud akan offline selama 15 menit malam ini untuk patch keamanan.' : 'Cloud synchronization will be offline for 15 minutes tonight for high-priority security patches.',
-    body: lang === 'id'
-      ? 'Salam Mitra. Tim teknis kami telah menjadwalkan pemeliharaan singkat mulai pukul 24:00 WIB. Selama waktu ini, sinkronisasi cloud dan fitur analisis AI mungkin mengalami gangguan konektivitas singkat. Pekerjaan ini diperlukan untuk menerapkan patch keamanan kritis dan memastikan keandalan jangka panjang node jaringan UI Enterprise. Tidak ada tindakan yang diperlukan dari pihak Anda.'
-      : 'Greetings Captain. Our engineering team has scheduled a brief maintenance window starting at 24:00 UTC. During this time, cloud synchronization and AI analysis features may experience intermittent connectivity. This work is necessary to deploy critical high-priority security patches and ensure the long-term reliability of the Enterprise UI network nodes. No action is required on your part.',
-    time: lang === 'id' ? '2 jam lalu' : '2 hours ago',
-    date: lang === 'id' ? '30 April 2026' : 'April 30, 2026',
-    status: 'unread',
-    tags: lang === 'id' ? ['Sistem', 'Pemeliharaan'] : ['System', 'Maintenance']
-  },
-  {
-    id: '2',
-    title: lang === 'id' ? 'Panduan Input Stok Baru' : 'New Stock Intake Guidelines',
-    preview: lang === 'id' ? 'Wajib foto dari 4 sudut untuk semua input produk baru yang berlaku segera.' : 'Mandatory 4-sided photos required for all new product intakes starting immediately.',
-    body: lang === 'id'
-      ? 'Perhatian untuk semua unit operasional. Untuk meningkatkan akurasi pengenalan AI dan audit inventaris, kami mewajibkan protokol foto 4 sudut yang ketat untuk semua input produk baru. Setiap entri wajib menyertakan foto yang jelas dari sudut depan, belakang, kanan, dan kiri. Entri yang gagal memenuhi kriteria ini akan ditandai untuk ditinjau. Terima kasih telah menjaga integritas data enterprise kami.'
-      : 'Attention all operational units. To improve AI recognition accuracy and inventory auditing, we are mandating a strict 4-sided photo protocol for all new product intakes. Every entry must include clear shots from the front, back, right, and left angles. Entries failing to meet these criteria will be flagged for review. Thank you for maintaining our enterprise data integrity.',
-    time: lang === 'id' ? '5 jam lalu' : '5 hours ago',
-    date: lang === 'id' ? '30 April 2026' : 'April 30, 2026',
-    status: 'unread',
-    tags: lang === 'id' ? ['Kebijakan', 'Inventaris'] : ['Policy', 'Inventory']
-  },
-  {
-    id: '3',
-    title: lang === 'id' ? 'Aktivasi Promo Akbar Ramadan' : 'Grand Ramadan Promo Activation',
-    preview: lang === 'id' ? 'Kampanye global "Grand Ramadan Special" kini telah aktif di seluruh cabang perkotaan.' : 'Global campaign "Grand Ramadan Special" is now live across all urban branch clusters.',
-    body: lang === 'id'
-      ? 'Kampanye "Grand Ramadan Special" di seluruh jaringan enterprise telah berhasil diaktifkan. Semua cabang disarankan untuk memverifikasi cache promo lokal mereka dan memastikan tampilan promosi fisik selaras dengan aset digital baru. AI kami memprediksi peningkatan penjualan Arabica Signature sebesar 22% selama jam operasional sore/malam.'
-      : 'The enterprise-wide "Grand Ramadan Special" campaign has been successfully deployed. All participating locations should verify their local promo caches and ensure point-of-sale displays are aligned with the new digital assets. Our AI predicts a 22% increase in Arabica Signature orders during the evening shift sessions.',
-    time: lang === 'id' ? 'Kemarin' : 'Yesterday',
-    date: lang === 'id' ? '29 April 2026' : 'April 29, 2026',
-    status: 'read',
-    tags: lang === 'id' ? ['Kampanye', 'Aktif'] : ['Campaign', 'Live']
-  },
-  {
-    id: '4',
-    title: lang === 'id' ? 'Peringatan Supply Chain Regional: Bandung' : 'Regional Supply Chain Alert: Bandung',
-    preview: lang === 'id' ? 'Keterlambatan logistik diperkirakan terjadi untuk campuran Arabica Signature di kluster industri Bandung.' : 'Logistics delay expected for Arabica Signature blends in the Bandung industrial cluster.',
-    body: lang === 'id'
-      ? 'Laporan logistik regional menunjukkan keterlambatan selama 4 jam pada pasokan yang melayani kluster industri Bandung. Manajer cabang di daerah terdampak disarankan untuk menyesuaikan stok penyangga lokal mereka. Analisis neural menyarankan untuk mempromosikan paket dinamis "Morning Classic" untuk mengisi celah stok sampai pengiriman sekunder tiba.'
-      : 'Regional logistics reports indicate a 4-hour delay in supply chain nodes servicing the Bandung industrial cluster. Branch managers in the affected areas are advised to adjust local buffer stocks accordingly. Neural analysis suggests using the "Morning Classic" dynamic bundle to bridge the gap until secondary replenishment arrives.',
-    time: lang === 'id' ? '1 hari lalu' : '1 day ago',
-    date: lang === 'id' ? '29 April 2026' : 'April 29, 2026',
-    status: 'read',
-    tags: lang === 'id' ? ['Logistik', 'Peringatan'] : ['Logistics', 'Alert']
-  },
-  {
-    id: '5',
-    title: lang === 'id' ? 'Laporan Evaluasi Performa Bulanan' : 'Monthly Performance Review Available',
-    preview: lang === 'id' ? 'Laporan Efisiensi Jaringan bulan April Anda kini siap ditinjau di pusat AI Insights.' : 'Your April Network Efficiency report is now ready for review in the AI Insights hub.',
-    body: lang === 'id'
-      ? 'Tolok ukur kinerja bulanan untuk periode pelaporan April 2026 telah selesai dianalisis. Node jaringan Anda mencapai peringkat efisiensi gabungan sebesar 94,2%. Vektor optimalisasi terperinci dan analisis kebocoran efisiensi kini tersedia di dasbor AI Insights pribadi Anda.'
-      : 'The monthly performance benchmarks for the reporting period of April 2026 have been finalized. Your network nodes achieved a combined efficiency rating of 94.2%. Detailed optimization vectors and efficiency leak analyses are now available in your personal AI Insights dashboard.',
-    time: lang === 'id' ? '3 hari lalu' : '3 days ago',
-    date: lang === 'id' ? '27 April 2026' : 'April 27, 2026',
-    status: 'read',
-    tags: lang === 'id' ? ['Laporan', 'AI'] : ['Report', 'AI']
+function getRelativeTime(dateString: string, lang: string) {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) {
+    return lang === 'id' ? 'Baru saja' : 'Just now';
   }
-];
+  if (diffMins < 60) {
+    return lang === 'id' ? `${diffMins} menit lalu` : `${diffMins}m ago`;
+  }
+  if (diffHours < 24) {
+    return lang === 'id' ? `${diffHours} jam lalu` : `${diffHours}h ago`;
+  }
+  if (diffDays === 1) {
+    return lang === 'id' ? 'Kemarin' : 'Yesterday';
+  }
+  return lang === 'id' ? `${diffDays} hari lalu` : `${diffDays}d ago`;
+}
 
 export default function BroadcastInboxPage() {
   const { language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
-  const MOCK_MESSAGES = getMockMessages(language);
-  const [selectedMessage, setSelectedMessage] = useState<typeof MOCK_MESSAGES[0] | null>(null);
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+  const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Sync messages state if language changes
-  useState(() => {
-    setMessages(getMockMessages(language));
-  });
+  const loadMessages = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchBackend('getBroadcasts');
+      if (res.status === 'success' && Array.isArray(res.data)) {
+        const readMessageIds = JSON.parse(localStorage.getItem('read_broadcasts') || '[]');
+        
+        const mapped = res.data.map((item: any) => {
+          const dateObj = new Date(item.created_at);
+          const formattedDate = dateObj.toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          });
+          
+          return {
+            id: String(item.id),
+            title: item.subject || 'No Subject',
+            preview: item.body ? (item.body.substring(0, 120) + (item.body.length > 120 ? '...' : '')) : '',
+            body: item.body || '',
+            time: getRelativeTime(item.created_at, language),
+            date: formattedDate,
+            status: readMessageIds.includes(String(item.id)) ? 'read' : 'unread',
+            tags: [item.audience ? item.audience.toUpperCase() : 'ALL']
+          };
+        });
+        setMessages(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to load broadcasts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMessages();
+  }, [language]);
 
   const filteredMessages = messages.filter(m => 
     m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     m.preview.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleOpenMessage = (msg: typeof MOCK_MESSAGES[0]) => {
+  const handleOpenMessage = (msg: any) => {
     setSelectedMessage(msg);
     if (msg.status === 'unread') {
+      const readMessageIds = JSON.parse(localStorage.getItem('read_broadcasts') || '[]');
+      if (!readMessageIds.includes(msg.id)) {
+        const updatedReadIds = [...readMessageIds, msg.id];
+        localStorage.setItem('read_broadcasts', JSON.stringify(updatedReadIds));
+      }
       setMessages(prev => prev.map(m => m.id === msg.id ? {...m, status: 'read' as const} : m));
     }
   };
@@ -134,86 +135,92 @@ export default function BroadcastInboxPage() {
         </div>
       </div>
 
-      <StaggerList className="space-y-4">
-        {filteredMessages.length > 0 ? (
-          filteredMessages.map((msg, index) => (
-            <StaggerItem
-              key={msg.id}
-            >
-              <Card 
-                className={cn(
-                  "rounded-[32px] border-none shadow-sm group hover:shadow-xl hover:shadow-indigo-600/5 transition-all cursor-pointer overflow-hidden",
-                  msg.status === 'unread' ? "bg-white ring-2 ring-indigo-50" : "bg-white/80"
-                )}
-                onClick={() => handleOpenMessage(msg)}
+      {loading ? (
+        <div className="flex items-center justify-center p-24">
+           <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
+        </div>
+      ) : (
+        <StaggerList className="space-y-4">
+          {filteredMessages.length > 0 ? (
+            filteredMessages.map((msg, index) => (
+              <StaggerItem
+                key={msg.id}
               >
-                <CardContent className="p-0">
-                  <div className="flex items-stretch min-h-[110px]">
-                     {/* Blue Indicator Line */}
-                     <div className={cn(
-                       "w-1.5 shrink-0 transition-opacity duration-500",
-                       msg.status === 'unread' ? "bg-indigo-600" : "bg-transparent"
-                     )} />
-                     
-                     <div className="flex-1 p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6">
-                        <div className="flex items-center gap-4 shrink-0">
-                           <div className={cn(
-                             "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
-                             msg.status === 'unread' ? "bg-indigo-50 text-indigo-600" : "bg-gray-50 text-gray-400"
-                           )}>
-                              <Bell className="w-5 h-5" />
-                           </div>
-                        </div>
+                <Card 
+                  className={cn(
+                    "rounded-[32px] border-none shadow-sm group hover:shadow-xl hover:shadow-indigo-600/5 transition-all cursor-pointer overflow-hidden",
+                    msg.status === 'unread' ? "bg-white ring-2 ring-indigo-50" : "bg-white/80"
+                  )}
+                  onClick={() => handleOpenMessage(msg)}
+                >
+                  <CardContent className="p-0">
+                    <div className="flex items-stretch min-h-[110px]">
+                       {/* Blue Indicator Line */}
+                       <div className={cn(
+                         "w-1.5 shrink-0 transition-opacity duration-500",
+                         msg.status === 'unread' ? "bg-indigo-600" : "bg-transparent"
+                       )} />
+                       
+                       <div className="flex-1 p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6">
+                          <div className="flex items-center gap-4 shrink-0">
+                             <div className={cn(
+                               "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
+                               msg.status === 'unread' ? "bg-indigo-50 text-indigo-600" : "bg-gray-50 text-gray-400"
+                             )}>
+                                <Bell className="w-5 h-5" />
+                             </div>
+                          </div>
 
-                        <div className="flex-1 min-w-0 space-y-1">
-                           <div className="flex items-center gap-2">
-                              {msg.status === 'unread' && (
-                                <div className="w-2 h-2 rounded-full bg-indigo-600" />
-                              )}
-                              <h3 className={cn(
-                                "text-lg font-black tracking-tight truncate group-hover:text-indigo-600 transition-colors",
-                                msg.status === 'unread' ? "text-gray-900" : "text-gray-500"
-                              )}>
-                                {msg.title}
-                              </h3>
-                           </div>
-                           <p className="text-gray-400 text-xs font-bold leading-relaxed truncate md:whitespace-normal line-clamp-1">
-                              {msg.preview}
-                           </p>
-                        </div>
+                          <div className="flex-1 min-w-0 space-y-1">
+                             <div className="flex items-center gap-2">
+                                {msg.status === 'unread' && (
+                                  <div className="w-2 h-2 rounded-full bg-indigo-600" />
+                                )}
+                                <h3 className={cn(
+                                  "text-lg font-black tracking-tight truncate group-hover:text-indigo-600 transition-colors",
+                                  msg.status === 'unread' ? "text-gray-900" : "text-gray-500"
+                                )}>
+                                  {msg.title}
+                                </h3>
+                             </div>
+                             <p className="text-gray-400 text-xs font-bold leading-relaxed truncate md:whitespace-normal line-clamp-1">
+                                {msg.preview}
+                             </p>
+                          </div>
 
-                        <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-2 shrink-0 md:pl-6 md:border-l border-gray-100">
-                           <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded-full">
-                              <Clock className="w-3 h-3" />
-                              {msg.time}
-                           </div>
-                           <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
-                        </div>
-                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </StaggerItem>
-          ))
-        ) : (
-          <div className="py-24 flex flex-col items-center justify-center text-center space-y-4">
-             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
-                <Inbox className="w-10 h-10" />
-             </div>
-             <div>
-                <p className="text-gray-900 font-black tracking-tighter text-xl capitalize">
-                  {language === 'id' ? 'Frekuensi Bersih' : 'Clear Frequencies'}
-                </p>
-                <p className="text-gray-400 font-medium text-sm">
-                  {language === 'id' ? 'Tidak ada pengumuman yang cocok dengan pencarian Anda.' : 'No announcements matching your search filters.'}
-                </p>
-             </div>
-             <Button variant="ghost" onClick={() => setSearchQuery('')} className="text-indigo-600 font-bold uppercase text-[10px] tracking-widest">
-                {language === 'id' ? 'Reset Pencarian' : 'Reset Search'}
-             </Button>
-          </div>
-        )}
-      </StaggerList>
+                          <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-2 shrink-0 md:pl-6 md:border-l border-gray-100">
+                             <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded-full">
+                                <Clock className="w-3 h-3" />
+                                {msg.time}
+                             </div>
+                             <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                          </div>
+                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </StaggerItem>
+            ))
+          ) : (
+            <div className="py-24 flex flex-col items-center justify-center text-center space-y-4">
+               <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
+                  <Inbox className="w-10 h-10" />
+               </div>
+               <div>
+                  <p className="text-gray-900 font-black tracking-tighter text-xl capitalize">
+                    {language === 'id' ? 'Frekuensi Bersih' : 'Clear Frequencies'}
+                  </p>
+                  <p className="text-gray-400 font-medium text-sm">
+                    {language === 'id' ? 'Tidak ada pengumuman yang cocok dengan pencarian Anda.' : 'No announcements matching your search filters.'}
+                  </p>
+               </div>
+               <Button variant="ghost" onClick={() => setSearchQuery('')} className="text-indigo-600 font-bold uppercase text-[10px] tracking-widest">
+                  {language === 'id' ? 'Reset Pencarian' : 'Reset Search'}
+               </Button>
+            </div>
+          )}
+        </StaggerList>
+      )}
 
       {/* Message Detail Modal */}
       <Dialog open={!!selectedMessage} onOpenChange={(open) => !open && setSelectedMessage(null)}>

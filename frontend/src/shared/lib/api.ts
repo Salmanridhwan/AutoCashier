@@ -132,6 +132,16 @@ export async function fetchBackend(action: string, data: any = {}) {
         return await response.json();
       }
 
+      case 'getBroadcasts': {
+        const response = await fetch(`${BACKEND_URL}/api/admin/broadcasts`, { headers });
+        return await response.json();
+      }
+
+      case 'getPromoInsights': {
+        const response = await fetch(`${BACKEND_URL}/api/admin/promos/insights`, { headers });
+        return await response.json();
+      }
+
       case 'createPromo': {
         const response = await fetch(`${BACKEND_URL}/api/admin/promos`, {
           method: 'POST',
@@ -240,11 +250,6 @@ export async function fetchBackend(action: string, data: any = {}) {
 
       case 'getBranches': {
         const response = await fetch(`${BACKEND_URL}/api/shared/branches`, { headers });
-        return await response.json();
-      }
-
-      case 'getBroadcasts': {
-        const response = await fetch(`${BACKEND_URL}/api/admin/broadcasts`, { headers });
         return await response.json();
       }
 

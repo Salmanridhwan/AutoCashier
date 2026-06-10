@@ -25,7 +25,13 @@ export async function listBranchSummaries(req: Request, res: Response) {
 }
 
 export async function getBranchInventoryDetails(req: Request, res: Response) {
-  const branchId = getBranchScope(req, req.params.id);
+  const user = (req as any).user;
+  const requestedBranchId = req.params.id;
+  if (user?.role === 'branch_admin' && requestedBranchId !== user.branch_id) {
+    return res.status(403).json({ status: 'error', error: 'FORBIDDEN', message: 'Access denied to other branch inventory' });
+  }
+
+  const branchId = getBranchScope(req, requestedBranchId);
   if (rejectMissingBranchScope(req, res, branchId)) return;
 
   const result = await branchService.getBranchInventory(branchId!);
@@ -35,7 +41,12 @@ export async function getBranchInventoryDetails(req: Request, res: Response) {
 
 export async function addInventory(req: Request, res: Response) {
   const user = (req as any).user;
-  const locationId = user?.role === 'branch_admin' ? user.branch_id : req.body.location_id;
+  const requestedBranchId = req.body.location_id;
+  if (user?.role === 'branch_admin' && requestedBranchId && requestedBranchId !== user.branch_id) {
+    return res.status(403).json({ status: 'error', error: 'FORBIDDEN', message: 'Access denied to other branch inventory' });
+  }
+
+  const locationId = user?.role === 'branch_admin' ? user.branch_id : requestedBranchId;
 
   if (!locationId || locationId === 'ALL') {
     return res.status(400).json({ status: 'error', message: 'Cabang tujuan wajib dipilih' });
@@ -47,7 +58,13 @@ export async function addInventory(req: Request, res: Response) {
 }
 
 export async function updateInventory(req: Request, res: Response) {
-  const locationId = getBranchScope(req, req.body.location_id);
+  const user = (req as any).user;
+  const requestedBranchId = req.body.location_id;
+  if (user?.role === 'branch_admin' && requestedBranchId && requestedBranchId !== user.branch_id) {
+    return res.status(403).json({ status: 'error', error: 'FORBIDDEN', message: 'Access denied to other branch inventory' });
+  }
+
+  const locationId = user?.role === 'branch_admin' ? user.branch_id : requestedBranchId;
   if (rejectMissingBranchScope(req, res, locationId)) return;
 
   const payload = { ...req.body, id: req.params.id, location_id: locationId };
@@ -58,7 +75,13 @@ export async function updateInventory(req: Request, res: Response) {
 
 export async function deleteInventory(req: Request, res: Response) {
   const { id } = req.params;
-  const branchId = getBranchScope(req, req.query.branch_id as string | undefined);
+  const user = (req as any).user;
+  const requestedBranchId = req.query.branch_id as string | undefined;
+  if (user?.role === 'branch_admin' && requestedBranchId && requestedBranchId !== user.branch_id) {
+    return res.status(403).json({ status: 'error', error: 'FORBIDDEN', message: 'Access denied to other branch inventory' });
+  }
+
+  const branchId = user?.role === 'branch_admin' ? user.branch_id : requestedBranchId;
   if (rejectMissingBranchScope(req, res, branchId)) return;
 
   const result = await branchService.deleteItem(id, branchId);
@@ -68,7 +91,12 @@ export async function deleteInventory(req: Request, res: Response) {
 
 export async function adjustInventory(req: Request, res: Response) {
   const user = (req as any).user;
-  const branchId = user?.role === 'branch_admin' ? user.branch_id : req.body.branchId;
+  const requestedBranchId = req.body.branchId;
+  if (user?.role === 'branch_admin' && requestedBranchId && requestedBranchId !== user.branch_id) {
+    return res.status(403).json({ status: 'error', error: 'FORBIDDEN', message: 'Access denied to other branch inventory' });
+  }
+
+  const branchId = user?.role === 'branch_admin' ? user.branch_id : requestedBranchId;
 
   if (!branchId || branchId === 'ALL') {
     return res.status(400).json({ status: 'error', message: 'Cabang tujuan wajib dipilih' });
@@ -90,7 +118,13 @@ export async function adjustInventory(req: Request, res: Response) {
 }
 
 export async function getMovements(req: Request, res: Response) {
-  const branchId = getBranchScope(req, req.params.id);
+  const user = (req as any).user;
+  const requestedBranchId = req.params.id;
+  if (user?.role === 'branch_admin' && requestedBranchId !== user.branch_id) {
+    return res.status(403).json({ status: 'error', error: 'FORBIDDEN', message: 'Access denied to other branch inventory' });
+  }
+
+  const branchId = getBranchScope(req, requestedBranchId);
   if (rejectMissingBranchScope(req, res, branchId)) return;
 
   const { product_id } = req.query;

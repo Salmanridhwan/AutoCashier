@@ -36,6 +36,23 @@ function formatRp(val: number) {
   return 'Rp ' + val.toLocaleString('id-ID');
 }
 
+function getWeeksForDropdown(year: number, monthName: string): string[] {
+  const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthIdx = monthsList.indexOf(monthName);
+  if (monthIdx === -1) return [];
+
+  const weeks: string[] = [];
+  const jan1 = new Date(year, 0, 1);
+  for (let w = 1; w <= 53; w++) {
+    const start = new Date(jan1.getTime() + (w - 1) * 7 * 24 * 60 * 60 * 1000);
+    const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+    if (start.getMonth() === monthIdx || end.getMonth() === monthIdx) {
+      weeks.push(`Week ${w}`);
+    }
+  }
+  return weeks;
+}
+
 const COLORS = ['#6366F1', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#8B5CF6'];
 import {useAuth} from '@/shared/context/AuthContext';
 import {useLocation} from '@/shared/context/LocationContext';
@@ -76,12 +93,18 @@ export default function OverviewPage() {
   
   // Dynamic Date Selectors State
   const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const currentYearStr = new Date().getFullYear().toString();
-  const currentMonthStr = monthsList[new Date().getMonth()];
+  const now = new Date();
+  const currentYearStr = now.getFullYear().toString();
+  const currentMonthStr = monthsList[now.getMonth()];
   
+  const jan1 = new Date(now.getFullYear(), 0, 1);
+  const currentWeekNumber = Math.floor((now.getTime() - jan1.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  const currentWeekStr = `Week ${currentWeekNumber}`;
+  const yearsList = Array.from({length: 5}, (_, i) => (now.getFullYear() - 2 + i).toString());
+
   const [selectedYear, setSelectedYear] = useState(currentYearStr);
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
-  const [selectedWeek, setSelectedWeek] = useState('Week 20');
+  const [selectedWeek, setSelectedWeek] = useState(currentWeekStr);
   const [isExporting, setIsExporting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -152,6 +175,16 @@ export default function OverviewPage() {
     };
   }, [currentLocation, timeframe, selectedYear, selectedMonth, selectedWeek]);
 
+  // Auto-adjust week if it doesn't belong to the selected month
+  useEffect(() => {
+    if (timeframe === 'weekly') {
+      const validWeeks = getWeeksForDropdown(Number(selectedYear), selectedMonth);
+      if (validWeeks.length > 0 && !validWeeks.includes(selectedWeek)) {
+        setSelectedWeek(validWeeks[0]);
+      }
+    }
+  }, [selectedYear, selectedMonth, timeframe, selectedWeek]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -195,6 +228,7 @@ export default function OverviewPage() {
       timeframe,
       selectedMonth,
       selectedYear,
+      selectedWeek,
       generatedAt:   new Date().toLocaleString('id-ID', {
         day:    '2-digit',
         month:  'long',
@@ -482,7 +516,7 @@ export default function OverviewPage() {
                         <SelectValue placeholder="YEAR" />
                       </SelectTrigger>
                       <SelectContent className="bg-[#1E293B] border-white/5 text-white rounded-2xl">
-                        {['2024', '2025', '2026'].map(y => (
+                        {yearsList.map(y => (
                           <SelectItem key={y} value={y} className="focus:bg-white/10 focus:text-white rounded-xl text-[10px] font-bold">{y}</SelectItem>
                         ))}
                       </SelectContent>
@@ -496,6 +530,19 @@ export default function OverviewPage() {
                         <SelectContent className="bg-[#1E293B] border-white/5 text-white rounded-2xl">
                           {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
                             <SelectItem key={m} value={m} className="focus:bg-white/10 focus:text-white rounded-xl text-[10px] font-bold uppercase">{m}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+
+                    {timeframe === 'weekly' && (
+                      <Select value={selectedWeek} onValueChange={(v) => { if (v) setSelectedWeek(v); }}>
+                        <SelectTrigger className="h-10 bg-[#1E293B] border-none text-white min-w-[100px] rounded-xl hover:bg-[#2D3B4E] transition-all text-[10px] font-black uppercase tracking-widest ring-0 focus:ring-0">
+                          <SelectValue placeholder="WEEK" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1E293B] border-white/5 text-white rounded-2xl">
+                          {getWeeksForDropdown(Number(selectedYear), selectedMonth).map(w => (
+                            <SelectItem key={w} value={w} className="focus:bg-white/10 focus:text-white rounded-xl text-[10px] font-bold uppercase">{w}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

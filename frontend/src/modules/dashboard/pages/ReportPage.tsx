@@ -59,7 +59,7 @@ export default function ReportPage() {
     );
   }
 
-  const { data, branchName, timeframe, selectedMonth, selectedYear, generatedAt } = snap;
+  const { data, branchName, timeframe, selectedMonth, selectedYear, selectedWeek, generatedAt } = snap;
   const topProducts: any[]         = data?.topProducts             ?? [];
   const productsList: any[]        = data?.productsList            ?? [];
   const categorySales: any[]       = data?.categorySalesBreakdown  ?? [];
@@ -334,11 +334,13 @@ export default function ReportPage() {
                 <div style={{ fontSize: 15, fontWeight: 900, color: '#fff' }}>
                   {periodLabel}
                 </div>
-                {timeframe !== 'weekly' && (
-                  <div style={{ fontSize: 12, color: '#c7d2fe', marginTop: 4, fontWeight: 600 }}>
-                    {timeframe === 'monthly' ? `${selectedMonth} ${selectedYear}` : selectedYear}
-                  </div>
-                )}
+                <div style={{ fontSize: 12, color: '#c7d2fe', marginTop: 4, fontWeight: 600 }}>
+                  {timeframe === 'weekly' 
+                    ? `${selectedWeek}, ${selectedMonth} ${selectedYear}` 
+                    : timeframe === 'monthly' 
+                      ? `${selectedMonth} ${selectedYear}` 
+                      : selectedYear}
+                </div>
                 <div style={{ fontSize: 10, color: '#818cf8', marginTop: 12, fontWeight: 600 }}>
                   {language === 'id' ? 'Dibuat:' : 'Generated:'} {generatedAt}
                 </div>

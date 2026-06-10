@@ -4,6 +4,10 @@ import { supabaseAdmin } from '../../config/supabaseClient.js';
 export async function getBranches(req: Request, res: Response) {
   try {
     const user = (req as any).user;
+    if (user?.role === 'branch_admin' && !user.branch_id) {
+      return res.status(403).json({ status: 'error', message: 'Branch ID not found in token' });
+    }
+
     let query = supabaseAdmin
       .from('branches')
       .select('id, name');

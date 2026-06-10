@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
 import { useLocation } from '@/shared/context/LocationContext';
 import { Button } from '@/shared/components/ui/button';
@@ -8,10 +8,11 @@ import { Input } from '@/shared/components/ui/input';
 import {
   Camera, CameraOff, Plus, Minus, Trash2, Search, ShoppingCart, Loader2,
   CheckCircle2, ArrowLeft, ArrowRight, User, Tag, Coins, QrCode,
-  LogOut, Sparkles, RefreshCw, X, ScanLine, ChevronLeft, ChevronRight,
-  SwitchCamera,
+  LogOut, LogIn, Sparkles, RefreshCw, X, ScanLine, ChevronLeft, ChevronRight,
+  SwitchCamera, ShieldCheck, Clock, Phone, AlertTriangle, FileImage, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { jsPDF } from 'jspdf';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CartItem { id: string; name: string; price: number; quantity: number; ai_class_name: string; image_url?: string | null; }
@@ -130,6 +131,7 @@ const getVideoSourceRoi = (
 export default function CashierPage() {
   const { user, logout } = useAuth();
   const { currentLocation, locationName } = useLocation();
+  const navigate = useNavigate();
 
   const [step, setStep] = React.useState<Step>('scan');
 
@@ -150,6 +152,7 @@ export default function CashierPage() {
   const [isCheckingOut, setIsCheckingOut] = React.useState(false);
   const [receipt, setReceipt] = React.useState<any>(null);
   const [countdown, setCountdown] = React.useState(RECEIPT_SECONDS);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = React.useState<string | null>(null);
 
   // Camera & scanner
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -178,6 +181,185 @@ export default function CashierPage() {
   const camWrapRef = React.useRef<HTMLDivElement>(null);
   const roiFrameRef = React.useRef<HTMLDivElement>(null);
   const boxTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const receiptRef = React.useRef<HTMLDivElement>(null);
+
+  const openReceiptPreview = () => {
+    const canvas = generateReceiptCanvas();
+    if (!canvas) { toast.error('Data struk tidak tersedia'); return; }
+    setReceiptPreviewUrl(canvas.toDataURL('image/png'));
+  };
+
+  const closeReceiptPreview = () => setReceiptPreviewUrl(null);
+
+  // ─── Receipt Canvas Generation (native Canvas2D – no html2canvas needed) ─────
+  const generateReceiptCanvas = (): HTMLCanvasElement | null => {
+    if (!receipt) return null;
+
+    const SCALE = 2;
+    const W = 360 * SCALE;          // 720 px physical
+    const PADDING = 24 * SCALE;
+    const FONT_SM = 11 * SCALE;
+    const FONT_MD = 13 * SCALE;
+    const FONT_LG = 15 * SCALE;
+    const FONT_XL = 20 * SCALE;
+    const LINE = 20 * SCALE;
+    const items: CartItem[] = receipt.items || [];
+
+    // ---- First pass: calculate total height ----
+    const BASE_HEIGHT =
+      (40 + 16 + 14 + 14 + 4 + 16 +   // header
+       12 + items.length * 40 + 12 +   // items
+       16 + 14 + 14 + 14 + 16 +        // subtotals
+       20 + 14 + 14 +                  // total
+       16 + 14 + 14 + 40              // footer
+      );
+    const H = (BASE_HEIGHT + 80) * SCALE;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
+
+    // Background
+    ctx.fillStyle = '#fdfdfd';
+    ctx.fillRect(0, 0, W, H);
+
+    let y = PADDING;
+
+    const drawText = (
+      text: string, x: number, size: number,
+      weight: 'normal' | 'bold' = 'normal',
+      align: CanvasTextAlign = 'left',
+      color = '#1f2937'
+    ) => {
+      ctx.fillStyle = color;
+      ctx.font = `${weight} ${size}px monospace`;
+      ctx.textAlign = align;
+      ctx.fillText(text, x, y);
+    };
+
+    const drawDash = () => {
+      ctx.setLineDash([6 * SCALE, 4 * SCALE]);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1.5 * SCALE;
+      ctx.beginPath();
+      ctx.moveTo(PADDING, y);
+      ctx.lineTo(W - PADDING, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      y += 12 * SCALE;
+    };
+
+    // ---- Header ----
+    y += 8 * SCALE;
+    drawText('AUTOCASHIER', W / 2, FONT_XL, 'bold', 'center');
+    y += LINE + 4 * SCALE;
+    drawText('Struk Pembayaran', W / 2, FONT_SM, 'normal', 'center', '#6b7280');
+    y += LINE - 4 * SCALE;
+    drawText(receipt.invoiceNumber || '', W / 2, FONT_SM, 'normal', 'center', '#9ca3af');
+    y += LINE + 4 * SCALE;
+    drawDash();
+
+    // ---- Items ----
+    items.forEach((it: CartItem) => {
+      drawText(it.name.toUpperCase(), PADDING, FONT_MD, 'bold', 'left');
+      drawText(rp(it.price * it.quantity), W - PADDING, FONT_MD, 'bold', 'right');
+      y += LINE;
+      drawText(`${it.quantity} x ${rp(it.price)}`, PADDING, FONT_SM, 'normal', 'left', '#6b7280');
+      y += LINE + 4 * SCALE;
+    });
+    drawDash();
+
+    // ---- Summary ----
+    const rowPair = (label: string, value: string, color = '#1f2937') => {
+      drawText(label, PADDING, FONT_MD, 'normal', 'left', color);
+      drawText(value, W - PADDING, FONT_MD, 'normal', 'right', color);
+      y += LINE;
+    };
+    rowPair('Subtotal', rp(receipt.subtotal || 0));
+    if (receipt.promoDiscount > 0) rowPair('Diskon Promo', '-' + rp(receipt.promoDiscount), '#059669');
+    if (receipt.pointsApplied > 0) rowPair('Poin Dipakai', '-' + rp(receipt.pointsApplied), '#d97706');
+    y += 4 * SCALE;
+    drawDash();
+
+    // ---- Total ----
+    drawText('TOTAL', PADDING, FONT_LG, 'bold');
+    drawText(rp(receipt.total || 0), W - PADDING, FONT_LG, 'bold', 'right');
+    y += LINE + 4 * SCALE;
+    const payMethod = (receipt.total === 0) ? 'LUNAS (POIN)' : 'QRIS';
+    drawText('Tipe Bayar', PADDING, FONT_SM, 'normal', 'left', '#6b7280');
+    drawText(payMethod, W - PADDING, FONT_SM, 'bold', 'right', '#6b7280');
+    y += LINE;
+    if (receipt.pointsEarned > 0) {
+      drawText('Poin didapat', PADDING, FONT_SM, 'normal', 'left', '#d97706');
+      drawText(`+${receipt.pointsEarned.toLocaleString('id-ID')}`, W - PADDING, FONT_SM, 'bold', 'right', '#d97706');
+      y += LINE;
+    }
+    y += 4 * SCALE;
+    drawDash();
+
+    // ---- Footer ----
+    drawText('Terima Kasih', W / 2, FONT_SM, 'normal', 'center', '#9ca3af');
+    y += LINE;
+    drawText('Barang tidak dapat ditukar / dikembalikan', W / 2, FONT_SM, 'normal', 'center', '#9ca3af');
+    y += LINE + 4 * SCALE;
+
+    // Trim canvas to actual content
+    const trimmed = document.createElement('canvas');
+    trimmed.width = W;
+    trimmed.height = y + PADDING;
+    const tctx = trimmed.getContext('2d')!;
+    tctx.fillStyle = '#fdfdfd';
+    tctx.fillRect(0, 0, trimmed.width, trimmed.height);
+    tctx.drawImage(canvas, 0, 0);
+    return trimmed;
+  };
+
+  const handleDownloadPNG = async () => {
+    const tid = toast.loading('Membuat gambar struk...');
+    try {
+      const canvas = generateReceiptCanvas();
+      if (!canvas) { toast.dismiss(tid); toast.error('Data struk tidak ditemukan'); return; }
+      canvas.toBlob((blob) => {
+        if (!blob) { toast.dismiss(tid); toast.error('Gagal membuat PNG'); return; }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `struk-${receipt?.invoiceNumber || 'pembayaran'}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.dismiss(tid);
+        toast.success('Struk PNG berhasil diunduh!');
+      }, 'image/png');
+    } catch (error) {
+      console.error(error);
+      toast.dismiss(tid);
+      toast.error('Gagal mengunduh PNG');
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    const tid = toast.loading('Membuat PDF struk...');
+    try {
+      const canvas = generateReceiptCanvas();
+      if (!canvas) { toast.dismiss(tid); toast.error('Data struk tidak ditemukan'); return; }
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const PX_TO_MM = 25.4 / 96 / 2; // SCALE=2 applied when drawing
+      const mmW = canvas.width * PX_TO_MM;
+      const mmH = canvas.height * PX_TO_MM;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [mmW, mmH] });
+      pdf.addImage(imgData, 'JPEG', 0, 0, mmW, mmH);
+      pdf.save(`struk-${receipt?.invoiceNumber || 'pembayaran'}.pdf`);
+      toast.dismiss(tid);
+      toast.success('Struk PDF berhasil diunduh!');
+    } catch (error) {
+      console.error(error);
+      toast.dismiss(tid);
+      toast.error('Gagal mengunduh PDF');
+    }
+  };
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
   const getHeaders = (multipart = false) => {
@@ -712,7 +894,7 @@ export default function CashierPage() {
         <div className="shrink-0 rounded-xl bg-indigo-600 p-2 text-white group-hover:scale-105 transition-transform"><Sparkles className="size-5" /></div>
         <div className="min-w-0">
           <h1 className="truncate text-base font-bold text-gray-900 sm:text-lg group-hover:text-indigo-600 transition-colors">AutoCashier POS</h1>
-          <p className="hidden truncate text-xs text-gray-500 sm:block">Cabang: {locationName} · {user?.username}</p>
+          <p className="hidden truncate text-xs text-gray-500 sm:block">Cabang: {locationName}</p>
         </div>
       </Link>
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
@@ -745,14 +927,24 @@ export default function CashierPage() {
             )}
           </div>
         )}
-        <Button
-          variant="ghost"
-          onClick={() => { stopCamera(); logout(); }}
-          className="px-2 text-gray-500 hover:text-gray-900 sm:px-4"
-          aria-label="Keluar"
-        >
-          <LogOut className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">Keluar</span>
-        </Button>
+        {user ? (
+          <Button
+            variant="ghost"
+            onClick={() => { stopCamera(); logout(); navigate('/'); }}
+            className="px-2 text-gray-500 hover:text-gray-900 sm:px-4"
+            aria-label="Keluar"
+          >
+            <LogOut className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">Keluar</span>
+          </Button>
+        ) : (
+          <Button
+            onClick={() => { stopCamera(); navigate('/login'); }}
+            className="px-2 bg-indigo-600 hover:bg-indigo-700 text-white sm:px-4 rounded-full shadow-md"
+            aria-label="Login"
+          >
+            <LogIn className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">Login</span>
+          </Button>
+        )}
       </div>
     </header>
   );
@@ -851,8 +1043,11 @@ export default function CashierPage() {
             {/* Scan frame: status-colored corners + moving scan line */}
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div ref={roiFrameRef} className="relative w-[58%] aspect-square max-w-md rounded-3xl shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/65 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/65 px-5 py-2 text-sm font-bold text-white backdrop-blur-sm border border-white/10 shadow-lg">
                   Posisikan seluruh produk di dalam kotak
+                </div>
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/50 px-4 py-1.5 text-xs font-medium text-white/90 backdrop-blur-md border border-white/10 flex items-center gap-2">
+                  <ScanLine className="size-3.5 text-indigo-400" /> Arahkan bagian depan produk menghadap kamera
                 </div>
                 {[
                   'top-0 left-0 border-t-4 border-l-4 rounded-tl-3xl',
@@ -869,7 +1064,8 @@ export default function CashierPage() {
             </div>
 
             {/* Animated status indicator */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
+
               {scanStatus === 'ACCEPT' ? (
                 <div key={feedback} className="flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-emerald-500 text-white text-lg font-bold shadow-xl" style={{ animation: 'posPop 0.3s ease-out' }}>
                   <CheckCircle2 className="size-6" /> {feedback || 'Produk terdeteksi'}
@@ -878,11 +1074,7 @@ export default function CashierPage() {
                 <div className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
                   <Loader2 className="size-4 animate-spin" /> Mendeteksi...
                 </div>
-              ) : (
-                <div className="flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-white/95 text-gray-800 text-lg font-bold shadow-xl backdrop-blur-md">
-                  <ScanLine className={`size-6 text-indigo-600 ${isBackgroundFrame ? '' : 'animate-pulse'}`} /> Siap mendeteksi produk
-                </div>
-              )}
+              ) : null}
             </div>
 
             {/* Animated detection bounding box */}
@@ -947,9 +1139,9 @@ export default function CashierPage() {
                     <button
                       onClick={() => removeFromCart(item.id)}
                       aria-label={`Hapus ${item.name}`}
-                      className="shrink-0 rounded-md p-1 text-gray-300 hover:bg-rose-50 hover:text-rose-500"
+                      className="shrink-0 rounded-md p-1.5 text-rose-500 bg-rose-50 hover:bg-rose-100 transition-colors"
                     >
-                      <Trash2 className="size-3.5" />
+                      <Trash2 className="size-4" />
                     </button>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2">
@@ -983,122 +1175,167 @@ export default function CashierPage() {
   // ─── STEP: CART (member + promo + points) ─────────────────────────────────────
   const renderCart = () => (
     <main className="flex-1 overflow-y-auto bg-gray-50">
-      <div className="max-w-3xl mx-auto p-6 space-y-5">
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
         <button onClick={() => setStep('scan')} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 font-medium">
           <ArrowLeft className="size-4" /> Kembali memindai
         </button>
 
-        {/* Items */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <h2 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><ShoppingCart className="size-5 text-indigo-600" /> Ringkasan Belanja</h2>
-          <div className="divide-y divide-gray-100">
-            {cart.map(item => (
-              <div key={item.id} className="py-2.5 flex items-center gap-3">
-                <ProductThumbnail
-                  imageUrl={item.image_url}
-                  name={item.name}
-                  className="size-14 rounded-xl border border-gray-200 bg-white"
-                />
-                <div className="flex-1"><p className="font-medium text-gray-900">{item.name}</p><p className="text-sm text-gray-500">{rp(item.price)} × {item.quantity}</p></div>
-                <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg h-9">
-                  <button onClick={() => updateQty(item.id, -1)} className="px-2.5 text-gray-500"><Minus className="size-4" /></button>
-                  <span className="w-8 text-center font-bold">{item.quantity}</span>
-                  <button onClick={() => updateQty(item.id, 1)} className="px-2.5 text-gray-500"><Plus className="size-4" /></button>
-                </div>
-                <span className="w-24 text-right font-bold">{rp(item.price * item.quantity)}</span>
-                <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-rose-500"><Trash2 className="size-4" /></button>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Items */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h2 className="font-extrabold text-gray-900 text-lg mb-4 flex items-center gap-2"><ShoppingCart className="size-6 text-indigo-600" /> Ringkasan Belanja</h2>
+              <div className="divide-y divide-gray-100">
+                {cart.length === 0 ? (
+                  <div className="py-12 text-center text-gray-400">
+                    <ShoppingCart className="size-12 mx-auto mb-3 stroke-[1.5]" />
+                    <p className="text-base font-medium">Keranjang masih kosong</p>
+                  </div>
+                ) : (
+                  cart.map(item => (
+                    <div key={item.id} className="py-4 flex items-center gap-4">
+                      <ProductThumbnail
+                        imageUrl={item.image_url}
+                        name={item.name}
+                        className="size-16 rounded-xl border border-gray-200 bg-white shadow-sm"
+                      />
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900 text-base">{item.name}</p>
+                        <p className="text-sm text-gray-500 mt-0.5">{rp(item.price)} × {item.quantity}</p>
+                      </div>
+                      <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg h-10 shadow-sm">
+                        <button onClick={() => updateQty(item.id, -1)} className="px-3 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-l-lg transition-colors"><Minus className="size-4" /></button>
+                        <span className="w-10 text-center font-bold text-gray-800">{item.quantity}</span>
+                        <button onClick={() => updateQty(item.id, 1)} className="px-3 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-r-lg transition-colors"><Plus className="size-4" /></button>
+                      </div>
+                      <span className="w-28 text-right font-extrabold text-gray-900 text-lg">{rp(item.price * item.quantity)}</span>
+                      <button onClick={() => removeFromCart(item.id)} className="shrink-0 rounded-lg p-2 text-rose-500 bg-rose-50 hover:bg-rose-100 transition-colors ml-2">
+                        <Trash2 className="size-4.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Member */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <h2 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><User className="size-5 text-indigo-600" /> Member</h2>
-          {member ? (
-            <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="size-5 text-emerald-600" />
-                <div><p className="font-semibold text-emerald-800">{member.name}</p><p className="text-sm text-emerald-600">{member.phone} · {pointsBalance.toLocaleString('id-ID')} poin</p></div>
-              </div>
-              <Button variant="ghost" onClick={clearMember} className="text-gray-500"><X className="size-4" /></Button>
             </div>
-          ) : (
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="size-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input placeholder="Nomor WhatsApp (mis. 0812...)" value={memberPhone}
-                  onChange={e => setMemberPhone(e.target.value)} onKeyDown={e => e.key === 'Enter' && checkMember()}
-                  className="h-12 pl-10 text-base" />
+          </div>
+
+          {/* Right Column: Member, Promo, Totals */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Member */}
+            <div className="bg-gradient-to-br from-indigo-50/80 to-white rounded-2xl border border-indigo-200 p-6 shadow-md shadow-indigo-500/10 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
+              
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <h2 className="font-black text-indigo-950 text-lg flex items-center gap-3">
+                  <div className="p-2 bg-indigo-600 rounded-xl shadow-sm shadow-indigo-600/30">
+                    <User className="size-5 text-white" />
+                  </div>
+                  Customer & Member
+                </h2>
+                {!member && <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-100/80 px-3 py-1 rounded-full">Prioritas</span>}
               </div>
-              <Button onClick={checkMember} disabled={isCheckingMember || !memberPhone.trim()} className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700">
-                {isCheckingMember ? <Loader2 className="size-4 animate-spin" /> : 'Cek'}
+
+              <div className="relative z-10">
+                {member ? (
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm transition-all">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="size-6 text-emerald-600" />
+                      <div>
+                        <p className="font-bold text-emerald-900 text-base">{member.name}</p>
+                        <p className="text-sm text-emerald-700 font-medium">{member.phone} · <span className="font-extrabold text-emerald-800">{pointsBalance.toLocaleString('id-ID')} poin</span></p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" onClick={clearMember} className="text-emerald-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg p-2"><X className="size-5" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4 mt-2">
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-3.5 rounded-xl flex items-center gap-3 shadow-sm">
+                      <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-2 rounded-xl shrink-0 shadow-md shadow-orange-500/20">
+                        <Sparkles className="size-5 text-white animate-pulse" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-amber-900 tracking-wide">Dapatkan Diskon & Poin Spesial!</p>
+                        <p className="text-xs text-amber-700 font-semibold mt-0.5">Masukkan nomor WhatsApp Anda untuk menikmati promo loyalitas.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1 group">
+                        <Phone className="size-6 text-indigo-500 absolute left-4 top-1/2 -translate-y-1/2 transition-transform group-focus-within:scale-110 group-focus-within:text-indigo-600" />
+                        <Input placeholder="Ketik 0812..." value={memberPhone}
+                          onChange={e => setMemberPhone(e.target.value)} onKeyDown={e => e.key === 'Enter' && checkMember()}
+                          className="h-14 pl-12 text-lg font-black text-gray-900 rounded-xl border-2 border-indigo-200 bg-white focus:bg-indigo-50/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all placeholder:text-gray-300 shadow-sm" />
+                      </div>
+                      <Button onClick={checkMember} disabled={isCheckingMember || !memberPhone.trim()} className="h-14 px-8 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-black text-base shadow-lg shadow-indigo-600/30 hover:-translate-y-1 transition-all">
+                        {isCheckingMember ? <Loader2 className="size-5 animate-spin" /> : 'Cek Member'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Promo + points (member only) */}
+            {member && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-5">
+                <div>
+                  <h2 className="font-extrabold text-gray-900 mb-4 flex items-center gap-2"><Tag className="size-5 text-indigo-600" /> Promo</h2>
+                  {promos.length === 0 ? (
+                    <p className="text-sm text-gray-400 font-medium bg-gray-50 p-3 rounded-xl border border-gray-100">Tidak ada promo aktif saat ini.</p>
+                  ) : (
+                    <div className="grid gap-3">
+                      <button onClick={() => setSelectedPromoId(null)} className={`text-left p-3.5 rounded-xl border transition-all ${!selectedPromoId ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/20 shadow-sm' : 'border-gray-200 hover:border-indigo-300'}`}>
+                        <span className="font-bold text-gray-700">Tanpa promo</span>
+                      </button>
+                      {promos.map(p => {
+                        const ok = !p.min_purchase || subtotal >= Number(p.min_purchase);
+                        return (
+                          <button key={p.id} disabled={!ok} onClick={() => setSelectedPromoId(p.id)}
+                            className={`text-left p-3.5 rounded-xl border transition-all disabled:opacity-50 disabled:bg-gray-50 ${selectedPromoId === p.id ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/20 shadow-sm' : 'border-gray-200 hover:border-indigo-300'}`}>
+                            <p className="font-bold text-gray-900">{p.title || p.code}</p>
+                            <p className="text-sm text-gray-500 mt-1 font-medium">
+                              {String(p.discount_type).toLowerCase() === 'percentage' ? `Diskon ${p.discount_value}%` : `Potongan ${rp(p.discount_value)}`}
+                              {p.min_purchase ? ` · min ${rp(Number(p.min_purchase))}` : ''}
+                              {!ok ? ' (belum memenuhi minimum)' : ''}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-gray-100 pt-5">
+                  <h2 className="font-extrabold text-gray-900 mb-2 flex items-center gap-2"><Coins className="size-5 text-amber-500" /> Pakai Poin</h2>
+                  <p className="text-sm text-gray-500 mb-3 font-medium">Saldo poin: <b className="text-gray-900">{pointsBalance.toLocaleString('id-ID')}</b> (1 poin = Rp 1). Maks dipakai: {maxPoints.toLocaleString('id-ID')}</p>
+                  <div className="flex gap-2">
+                    <Input type="number" min={0} max={maxPoints} value={pointsToUse || ''} placeholder="0"
+                      onChange={e => setPointsToUse(Math.max(0, Math.min(maxPoints, Number(e.target.value) || 0)))}
+                      className="h-11 text-base rounded-xl border-gray-200 bg-gray-50 focus:bg-white transition-colors" />
+                    <Button variant="outline" className="h-11 px-4 rounded-xl border-gray-200 font-bold hover:bg-gray-50 hover:text-indigo-600 transition-colors" onClick={() => setPointsToUse(maxPoints)}>Pakai Maks</Button>
+                    <Button variant="outline" className="h-11 px-4 rounded-xl border-gray-200 font-bold hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors" onClick={() => setPointsToUse(0)}>Reset</Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Totals */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <div className="space-y-2 text-gray-600">
+                <div className="flex justify-between items-center"><span className="font-medium">Subtotal</span><span className="font-semibold text-gray-900 text-base">{rp(subtotal)}</span></div>
+                {promoDiscount > 0 && <div className="flex justify-between items-center text-emerald-600"><span className="font-bold">Diskon promo</span><span className="font-bold">- {rp(promoDiscount)}</span></div>}
+                {pointsApplied > 0 && <div className="flex justify-between items-center text-amber-600"><span className="font-bold">Poin dipakai</span><span className="font-bold">- {rp(pointsApplied)}</span></div>}
+                <div className="flex justify-between items-end pt-4 mt-2 border-t border-gray-200">
+                  <span className="font-black text-gray-900 text-lg">Total Pembayaran</span>
+                  <span className="text-4xl font-black text-indigo-600 tracking-tight">{rp(total)}</span>
+                </div>
+                {member && <p className="text-sm font-bold text-amber-600 text-right mt-1">+{pointsEarned.toLocaleString('id-ID')} poin akan didapat</p>}
+              </div>
+              <Button onClick={() => setStep('payment')} disabled={cart.length === 0}
+                className="w-full h-14 text-lg font-black mt-6 bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-600/25 transition-all hover:-translate-y-0.5">
+                Lanjut ke Pembayaran <QrCode className="size-5 ml-2" />
               </Button>
             </div>
-          )}
-          {!member && <p className="text-xs text-gray-400 mt-2">Lewati jika bukan member. Member dapat memakai promo & poin.</p>}
-        </div>
-
-        {/* Promo + points (member only) */}
-        {member && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
-            <div>
-              <h2 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><Tag className="size-5 text-indigo-600" /> Promo</h2>
-              {promos.length === 0 ? (
-                <p className="text-sm text-gray-400">Tidak ada promo aktif.</p>
-              ) : (
-                <div className="grid gap-2">
-                  <button onClick={() => setSelectedPromoId(null)} className={`text-left p-3 rounded-xl border ${!selectedPromoId ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'}`}>
-                    <span className="font-medium text-gray-700">Tanpa promo</span>
-                  </button>
-                  {promos.map(p => {
-                    const ok = !p.min_purchase || subtotal >= Number(p.min_purchase);
-                    return (
-                      <button key={p.id} disabled={!ok} onClick={() => setSelectedPromoId(p.id)}
-                        className={`text-left p-3 rounded-xl border disabled:opacity-50 ${selectedPromoId === p.id ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'}`}>
-                        <p className="font-semibold text-gray-900">{p.title || p.code}</p>
-                        <p className="text-sm text-gray-500">
-                          {String(p.discount_type).toLowerCase() === 'percentage' ? `Diskon ${p.discount_value}%` : `Potongan ${rp(p.discount_value)}`}
-                          {p.min_purchase ? ` · min ${rp(Number(p.min_purchase))}` : ''}
-                          {!ok ? ' (belum memenuhi minimum)' : ''}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h2 className="font-bold text-gray-900 mb-2 flex items-center gap-2"><Coins className="size-5 text-amber-500" /> Pakai Poin</h2>
-              <p className="text-sm text-gray-500 mb-2">Saldo poin: <b>{pointsBalance.toLocaleString('id-ID')}</b> (1 poin = Rp 1). Maks dipakai: {maxPoints.toLocaleString('id-ID')}</p>
-              <div className="flex gap-2">
-                <Input type="number" min={0} max={maxPoints} value={pointsToUse || ''} placeholder="0"
-                  onChange={e => setPointsToUse(Math.max(0, Math.min(maxPoints, Number(e.target.value) || 0)))}
-                  className="h-12 text-base" />
-                <Button variant="outline" className="h-12 px-4" onClick={() => setPointsToUse(maxPoints)}>Pakai Maks</Button>
-                <Button variant="outline" className="h-12 px-4" onClick={() => setPointsToUse(0)}>0</Button>
-              </div>
-            </div>
           </div>
-        )}
-
-        {/* Totals */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <div className="space-y-1.5 text-gray-600">
-            <div className="flex justify-between"><span>Subtotal</span><span>{rp(subtotal)}</span></div>
-            {promoDiscount > 0 && <div className="flex justify-between text-emerald-600"><span>Diskon promo</span><span>- {rp(promoDiscount)}</span></div>}
-            {pointsApplied > 0 && <div className="flex justify-between text-amber-600"><span>Poin dipakai</span><span>- {rp(pointsApplied)}</span></div>}
-            <div className="flex justify-between items-end pt-2 mt-2 border-t border-gray-100">
-              <span className="font-bold text-gray-900">Total</span>
-              <span className="text-3xl font-extrabold text-indigo-600">{rp(total)}</span>
-            </div>
-            {member && <p className="text-xs text-amber-600 text-right">+{pointsEarned.toLocaleString('id-ID')} poin akan didapat</p>}
-          </div>
-          <Button onClick={() => setStep('payment')} disabled={cart.length === 0}
-            className="w-full h-14 text-lg font-bold mt-4 bg-indigo-600 hover:bg-indigo-700">
-            Lanjut ke Pembayaran <QrCode className="size-5 ml-2" />
-          </Button>
         </div>
       </div>
     </main>
@@ -1106,54 +1343,271 @@ export default function CashierPage() {
 
   // ─── STEP: PAYMENT (QRIS) ─────────────────────────────────────────────────────
   const renderPayment = () => (
-    <main className="flex-1 overflow-y-auto bg-gray-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-center">
-        <button onClick={() => setStep('cart')} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 font-medium mb-4">
-          <ArrowLeft className="size-4" /> Kembali
-        </button>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-sm font-bold mb-3"><QrCode className="size-4" /> Pembayaran QRIS</div>
-        <p className="text-gray-500">Total yang harus dibayar</p>
-        <p className="text-4xl font-extrabold text-gray-900 mb-5">{rp(total)}</p>
-        <div className="mx-auto w-[280px] h-[280px] rounded-2xl border-4 border-indigo-100 p-2 bg-white">
-          <img src={qrUrl} alt="QRIS" className="w-full h-full object-contain" />
+    <main className="flex-1 overflow-y-auto bg-slate-50 relative p-4 md:p-8">
+      {/* Decorative Background Elements */}
+      <div className="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-indigo-600 to-indigo-900 rounded-b-[60px] shadow-xl pointer-events-none" />
+      <div className="absolute top-10 right-20 w-64 h-64 bg-white/10 blur-3xl rounded-full pointer-events-none" />
+      <div className="absolute top-20 left-10 w-48 h-48 bg-indigo-400/20 blur-3xl rounded-full pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center">
+        <div className="w-full flex items-center justify-between mb-8">
+          <button onClick={() => setStep('cart')} className="flex items-center gap-2 text-white hover:text-indigo-100 font-bold px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-md transition-all">
+            <ArrowLeft className="size-5" /> Kembali ke Keranjang
+          </button>
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-6 py-2.5 rounded-xl text-white font-semibold shadow-sm">
+            <ShieldCheck className="size-5 text-emerald-300" />
+            Pembayaran Aman
+          </div>
         </div>
-        <p className="text-sm text-gray-500 mt-4">Minta pembeli memindai QR dengan aplikasi e-wallet / m-banking.</p>
-        <Button onClick={submitCheckout} disabled={isCheckingOut}
-          className="w-full h-14 text-lg font-bold mt-6 bg-emerald-600 hover:bg-emerald-700">
-          {isCheckingOut ? <><Loader2 className="size-5 mr-2 animate-spin" /> Memproses...</> : <><CheckCircle2 className="size-5 mr-2" /> Konfirmasi Pembayaran</>}
-        </Button>
-        <p className="text-xs text-gray-400 mt-2">Tekan setelah pembayaran diterima.</p>
+
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Order Summary */}
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            <div className="bg-white rounded-[24px] border border-gray-100 shadow-xl p-6">
+              <h3 className="font-extrabold text-gray-900 text-lg mb-4 flex items-center gap-2">
+                <ShoppingCart className="size-5 text-indigo-600" />
+                Ringkasan Pesanan
+              </h3>
+              
+              <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3 mb-4 custom-scrollbar">
+                {cart.map(item => (
+                  <div key={item.id} className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded-md">{item.quantity}x</span>
+                      <span className="font-medium text-gray-800 line-clamp-1">{item.name}</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">{rp(item.price * item.quantity)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-dashed border-gray-200 pt-4 space-y-2">
+                <div className="flex justify-between text-sm text-gray-500 font-medium">
+                  <span>Subtotal</span>
+                  <span>{rp(subtotal)}</span>
+                </div>
+                {promoDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-emerald-600 font-bold">
+                    <span>Diskon Promo</span>
+                    <span>- {rp(promoDiscount)}</span>
+                  </div>
+                )}
+                {pointsApplied > 0 && (
+                  <div className="flex justify-between text-sm text-amber-500 font-bold">
+                    <span>Poin Digunakan</span>
+                    <span>- {rp(pointsApplied)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {member && (
+              <div className="bg-gradient-to-r from-amber-500 to-orange-400 rounded-[24px] shadow-lg p-5 text-white flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-amber-100 mb-0.5">Member Reward</p>
+                  <p className="font-semibold text-sm">+{pointsEarned.toLocaleString('id-ID')} Poin didapat</p>
+                </div>
+                <Coins className="size-8 text-amber-200 opacity-80" />
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Payment Action (QRIS or Lunas) */}
+          <div className="lg:col-span-7 bg-white rounded-[32px] border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-8 md:p-12 text-center relative overflow-hidden">
+            {/* Subtle background pattern */}
+            <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #4f46e5 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
+            
+            <div className="relative z-10">
+              {total === 0 ? (
+                <div className="py-12">
+                  <div className="mx-auto w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6 shadow-inner shadow-emerald-200">
+                    <CheckCircle2 className="size-12" />
+                  </div>
+                  <h2 className="text-4xl font-black text-gray-900 mb-3 tracking-tight">Pesanan Lunas!</h2>
+                  <p className="text-gray-500 font-medium mb-12 text-lg">Seluruh tagihan telah dibayar menggunakan Poin Loyalitas.</p>
+                  
+                  <Button onClick={submitCheckout} disabled={isCheckingOut}
+                    className="w-full h-16 text-lg font-black uppercase tracking-wider rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all hover:-translate-y-1 hover:shadow-[0_12px_25px_rgba(16,185,129,0.4)] border-none text-white relative group overflow-hidden">
+                    <span className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></span>
+                    {isCheckingOut ? (
+                      <><Loader2 className="size-6 mr-3 animate-spin" /> Sedang Memproses...</>
+                    ) : (
+                      <><Sparkles className="size-6 mr-3" /> Selesaikan Transaksi</>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-sm font-extrabold mb-4 uppercase tracking-widest shadow-sm">
+                    <QrCode className="size-4" /> Kode QRIS Aktif
+                  </div>
+                  
+                  <p className="text-gray-500 font-medium mb-1">Total Pembayaran</p>
+                  <p className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 mb-8 tracking-tight">
+                    {rp(total)}
+                  </p>
+                  
+                  <div className="mx-auto w-[280px] md:w-[320px] aspect-square rounded-[32px] border-8 border-gray-50 shadow-inner p-4 bg-white relative group transition-transform duration-300 hover:scale-105">
+                    <img src={qrUrl} alt="QRIS Payment" className="w-full h-full object-contain mix-blend-multiply" />
+                    <div className="absolute inset-0 border-2 border-indigo-500/0 rounded-[24px] group-hover:border-indigo-500/50 transition-colors duration-500"></div>
+                    {/* Scanner animation line */}
+                    <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] opacity-0 group-hover:opacity-100 group-hover:animate-[scan_2s_ease-in-out_infinite]"></div>
+                  </div>
+                  
+                  <div className="mt-8 flex flex-col items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-600 bg-gray-50 px-6 py-2 rounded-full border border-gray-200">
+                      Arahkan kamera e-wallet atau m-banking ke QR code
+                    </p>
+                  </div>
+
+                  <div className="mt-8">
+                    <Button onClick={submitCheckout} disabled={isCheckingOut}
+                      className="w-full h-16 text-lg font-black uppercase tracking-wider rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all hover:shadow-[0_12px_25px_rgba(16,185,129,0.4)] border-none text-white overflow-hidden relative group">
+                      <span className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></span>
+                      {isCheckingOut ? (
+                        <><Loader2 className="size-6 mr-3 animate-spin" /> Sedang Memproses...</>
+                      ) : (
+                        <><CheckCircle2 className="size-6 mr-3" /> Konfirmasi Pembayaran Selesai</>
+                      )}
+                    </Button>
+                    <p className="text-xs text-gray-400 mt-4 font-medium flex items-center justify-center gap-1">
+                      <Clock className="size-3.5" /> Tekan tombol konfirmasi hanya jika dana sudah masuk
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
+      
+      <style>{`
+        @keyframes scan {
+          0% { top: 5%; }
+          50% { top: 95%; }
+          100% { top: 5%; }
+        }
+        @keyframes shimmer {
+          100% { transform: translateX(100%); }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 10px;
+        }
+      `}</style>
     </main>
   );
 
   // ─── STEP: RECEIPT ────────────────────────────────────────────────────────────
   const renderReceipt = () => (
-    <main className="flex-1 overflow-y-auto bg-gray-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-sm bg-white rounded-3xl border border-gray-200 shadow-sm p-7">
-        <div className="text-center mb-5">
-          <div className="mx-auto p-3 rounded-full bg-emerald-100 text-emerald-600 w-fit mb-3"><CheckCircle2 className="size-9" /></div>
-          <h2 className="text-xl font-extrabold text-gray-900">Pembayaran Berhasil</h2>
-          <p className="text-sm text-gray-500">{receipt?.invoiceNumber}</p>
-        </div>
-        <div className="border-y border-dashed border-gray-200 py-4 space-y-1.5 text-sm">
-          {receipt?.items?.map((it: CartItem) => (
-            <div key={it.id} className="flex justify-between text-gray-600"><span>{it.name} × {it.quantity}</span><span>{rp(it.price * it.quantity)}</span></div>
-          ))}
-        </div>
-        <div className="py-3 space-y-1 text-sm text-gray-600">
-          <div className="flex justify-between"><span>Subtotal</span><span>{rp(receipt?.subtotal || 0)}</span></div>
-          {receipt?.promoDiscount > 0 && <div className="flex justify-between text-emerald-600"><span>Promo</span><span>- {rp(receipt.promoDiscount)}</span></div>}
-          {receipt?.pointsApplied > 0 && <div className="flex justify-between text-amber-600"><span>Poin</span><span>- {rp(receipt.pointsApplied)}</span></div>}
-          <div className="flex justify-between font-extrabold text-gray-900 text-lg pt-1.5 border-t border-gray-100"><span>Total (QRIS)</span><span>{rp(receipt?.total || 0)}</span></div>
-          {receipt?.member && <div className="flex justify-between text-amber-600 pt-1"><span>Poin didapat</span><span>+{receipt.pointsEarned}</span></div>}
-        </div>
-        <p className="text-center text-xs text-gray-400 my-3">Terima kasih telah berbelanja 🙏</p>
+    <main className="flex-1 overflow-y-auto bg-slate-50 flex items-center justify-center p-6 md:p-12 relative">
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-400/20 via-slate-50 to-slate-50 pointer-events-none" />
+      
+      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-20 items-center relative z-10">
+        
+        {/* Left Column: Success Message & Actions */}
+        <div className="flex flex-col items-center md:items-start text-center md:text-left space-y-6 bg-white/70 backdrop-blur-xl p-8 md:p-12 rounded-[40px] border border-white shadow-xl shadow-emerald-900/5 relative overflow-hidden">
+          {/* Decorative glow inside card */}
+          <div className="absolute -top-20 -left-20 w-64 h-64 bg-emerald-400/20 blur-[60px] rounded-full pointer-events-none" />
+          
+          <div className="inline-flex items-center justify-center p-5 rounded-full bg-emerald-100 text-emerald-600 shadow-inner shadow-emerald-200 mb-2 relative z-10">
+            <CheckCircle2 className="size-16" />
+          </div>
+          
+          <div className="relative z-10">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-4">Pembayaran<br/><span className="text-emerald-600">Berhasil!</span></h2>
+            <p className="text-lg text-gray-500 font-medium max-w-sm">Terima kasih telah berbelanja. Transaksi Anda telah tercatat ke dalam sistem.</p>
+          </div>
 
-        <Button onClick={resetTransaction} className="w-full h-14 text-lg font-bold bg-indigo-600 hover:bg-indigo-700">
-          <RefreshCw className="size-5 mr-2" /> Transaksi Baru
-        </Button>
-        <p className="text-center text-sm text-gray-400 mt-3">Kembali otomatis dalam <b className="text-gray-700">{countdown}</b> detik</p>
+          {receipt?.member && (
+            <div className="w-full max-w-md bg-gradient-to-r from-amber-500 to-orange-400 rounded-[24px] p-6 text-white shadow-lg shadow-orange-500/20 flex items-center justify-between mt-2 relative z-10">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wider text-amber-100 mb-1">Poin Loyalitas Didapat</p>
+                <p className="text-3xl font-black">+{receipt.pointsEarned.toLocaleString('id-ID')}</p>
+              </div>
+              <Sparkles className="size-10 text-amber-200 opacity-80" />
+            </div>
+          )}
+
+          <div className="w-full max-w-md pt-6 mt-4 border-t border-gray-200/60 relative z-10">
+            <Button onClick={resetTransaction} className="w-full h-16 text-xl font-black bg-indigo-600 hover:bg-indigo-700 rounded-2xl shadow-xl shadow-indigo-600/30 hover:-translate-y-1 transition-all">
+              <RefreshCw className="size-6 mr-3" /> Transaksi Baru
+            </Button>
+            
+            <Button onClick={openReceiptPreview} variant="outline" className="w-full h-14 mt-4 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-2xl font-bold bg-white/50 backdrop-blur-sm shadow-sm flex items-center justify-center gap-3">
+              <FileImage className="size-5 text-gray-500" /> Lihat &amp; Unduh Struk
+            </Button>
+
+            <p className="text-center text-sm text-gray-500 mt-5 font-medium">Sistem akan memuat ulang dalam <b className="text-gray-900 bg-gray-100 px-2 py-1 rounded-md">{countdown}</b> detik</p>
+          </div>
+        </div>
+
+        {/* Right Column: The Receipt Slip */}
+        <div className="flex justify-center md:justify-end">
+          <div ref={receiptRef} className="w-full max-w-[360px] bg-[#fdfdfd] shadow-2xl relative pt-6 pb-10 font-mono text-gray-800">
+            {/* Top jagged edge */}
+            <div className="absolute -top-3 left-0 w-full h-3 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCI+PHBvbHlnb24gcG9pbnRzPSIwLDAgNSwxMCAxMCwwIiBmaWxsPSIjZmRmZGZkIi8+PC9zdmc+')] bg-repeat-x z-20" />
+            
+            <div className="px-6 pb-4 text-center">
+              <h3 className="text-xl font-bold tracking-widest uppercase mb-1">AutoCashier</h3>
+              <p className="text-xs text-gray-500 uppercase">Struk Pembayaran</p>
+              <p className="text-xs text-gray-500 mb-4">{receipt?.invoiceNumber}</p>
+              <div className="border-b-2 border-dashed border-gray-300 w-full" />
+            </div>
+            
+            <div className="px-6 py-2 space-y-3 text-sm">
+              {receipt?.items?.map((it: CartItem) => (
+                <div key={it.id} className="flex justify-between items-start">
+                  <div className="flex flex-col max-w-[65%]">
+                    <span className="font-semibold uppercase truncate">{it.name}</span>
+                    <span className="text-gray-500 text-xs">{it.quantity} x {rp(it.price)}</span>
+                  </div>
+                  <span className="font-bold">{rp(it.price * it.quantity)}</span>
+                </div>
+              ))}
+            </div>
+            
+            <div className="px-6 py-4">
+              <div className="border-b-2 border-dashed border-gray-300 w-full mb-3" />
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between"><span>Subtotal</span><span>{rp(receipt?.subtotal || 0)}</span></div>
+                {receipt?.promoDiscount > 0 && <div className="flex justify-between"><span>Diskon</span><span>-{rp(receipt.promoDiscount)}</span></div>}
+                {receipt?.pointsApplied > 0 && <div className="flex justify-between"><span>Poin</span><span>-{rp(receipt.pointsApplied)}</span></div>}
+              </div>
+              <div className="border-b-2 border-dashed border-gray-300 w-full mt-3 mb-3" />
+              <div className="flex justify-between items-center">
+                <span className="font-bold uppercase text-lg">Total</span>
+                <span className="text-xl font-bold">{rp(receipt?.total || 0)}</span>
+              </div>
+              {receipt?.total === 0 ? (
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-xs">Tipe Bayar</span>
+                  <span className="text-xs font-bold uppercase">LUNAS (POIN)</span>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-xs">Tipe Bayar</span>
+                  <span className="text-xs font-bold uppercase">QRIS</span>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 text-center text-xs text-gray-500 mt-4 space-y-1">
+              <p>Terima Kasih</p>
+              <p>Barang yang sudah dibeli<br/>tidak dapat ditukar/dikembalikan</p>
+            </div>
+
+            {/* Bottom jagged edge */}
+            <div className="absolute -bottom-3 left-0 w-full h-3 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCI+PHBvbHlnb24gcG9pbnRzPSIwLDEwIDUsMCAxMCwxMCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=')] bg-repeat-x z-20" />
+          </div>
+        </div>
+
       </div>
     </main>
   );
@@ -1165,6 +1619,57 @@ export default function CashierPage() {
       {step === 'cart' && renderCart()}
       {step === 'payment' && renderPayment()}
       {step === 'receipt' && renderReceipt()}
+
+      {/* ─── Receipt Preview Modal ──────────────────────────────────────────── */}
+      {receiptPreviewUrl && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+          onClick={closeReceiptPreview}
+        >
+          <div
+            className="relative flex flex-col items-center gap-6 max-h-[95vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={closeReceiptPreview}
+              className="absolute -top-4 -right-4 z-10 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-xl hover:bg-gray-100 transition-colors text-gray-700"
+            >
+              <X className="size-5" />
+            </button>
+
+            {/* Title */}
+            <div className="text-white font-bold text-lg tracking-wide">Preview Struk</div>
+
+            {/* Receipt image */}
+            <div className="overflow-y-auto max-h-[65vh] rounded-2xl shadow-2xl border-4 border-white/20">
+              <img
+                src={receiptPreviewUrl}
+                alt="Preview Struk"
+                className="block"
+                style={{ width: '360px', imageRendering: 'crisp-edges' }}
+              />
+            </div>
+
+            {/* Download buttons */}
+            <div className="flex gap-4 w-full">
+              <button
+                onClick={handleDownloadPNG}
+                className="flex-1 flex items-center justify-center gap-2 h-14 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-900/30 transition-all hover:-translate-y-0.5"
+              >
+                <FileImage className="size-5" /> Unduh PNG
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                className="flex-1 flex items-center justify-center gap-2 h-14 rounded-2xl font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-900/30 transition-all hover:-translate-y-0.5"
+              >
+                <FileText className="size-5" /> Unduh PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
