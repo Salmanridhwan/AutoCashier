@@ -14,6 +14,13 @@ import { fetchBackend, BACKEND_URL } from '@/shared/lib/api';
 import { AdjustStockModal } from '@/shared/components/layout/AdjustStockModal';
 import { toast } from 'sonner';
 import { useLanguage } from '@/shared/context/LanguageContext';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
+import { HelpCircle } from 'lucide-react';
 
 function formatRp(val: number) {
   return 'Rp ' + val.toLocaleString('id-ID');
@@ -133,14 +140,46 @@ export default function BranchInventoryPage() {
           {[
             { label: 'Total SKU', value: inventory.length, icon: Boxes, color: 'text-indigo-600 bg-indigo-50' },
             { label: language === 'id' ? 'Perlu Perhatian' : 'Needs Attention', value: criticals.length, icon: AlertTriangle, color: criticals.length > 0 ? 'text-rose-600 bg-rose-50' : 'text-emerald-600 bg-emerald-50' },
-            { label: language === 'id' ? 'Nilai Stok' : 'Stock Value', value: formatRp(totalValue), icon: Wallet, color: 'text-amber-600 bg-amber-50' },
-            { label: language === 'id' ? 'Kesehatan' : 'Health', value: `${selectedBranch.healthScore}%`, icon: ShieldCheck, color: selectedBranch.healthScore >= 80 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50' },
+            { 
+              label: language === 'id' ? 'Nilai Stok' : 'Stock Value', 
+              value: formatRp(totalValue), 
+              icon: Wallet, 
+              color: 'text-amber-600 bg-amber-50',
+              tooltip: language === 'id' 
+                ? 'Total nilai uang dari seluruh stok yang tersedia (Stok x Harga Jual masing-masing produk).' 
+                : 'Total monetary value of all available stock (Stock x Selling Price of each product).'
+            },
+            { 
+              label: language === 'id' ? 'Kesehatan' : 'Health', 
+              value: `${selectedBranch.healthScore}%`, 
+              icon: ShieldCheck, 
+              color: selectedBranch.healthScore >= 80 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50',
+              tooltip: language === 'id'
+                ? 'Persentase produk yang memiliki jumlah stok aman/ideal (di atas batas minimum stok / reorder point).'
+                : 'Percentage of products with healthy/ideal stock levels (above minimum stock or reorder point).'
+            },
           ].map(s => (
             <Card key={s.label} className="border-none shadow-sm">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className={cn('p-2.5 rounded-xl', s.color)}><s.icon className="w-4 h-4" /></div>
                 <div>
-                  <p className="text-xs text-gray-400 font-semibold">{s.label}</p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-gray-400 font-semibold">{s.label}</p>
+                    {s.tooltip && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="text-gray-300 hover:text-gray-500 transition-colors">
+                              <HelpCircle className="w-3.5 h-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-slate-900 text-white rounded-xl p-3 shadow-xl max-w-xs font-sans text-xs border-none">
+                            {s.tooltip}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                   <p className="text-lg font-black text-gray-900 tracking-tight">{s.value}</p>
                 </div>
               </CardContent>
@@ -250,11 +289,7 @@ export default function BranchInventoryPage() {
                               </div>
                             </td>
                             <td className="py-4 pr-6 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); setAdjustItem(item); }}
-                                  className="h-8 px-3 text-xs font-black rounded-xl border-gray-200 hover:border-indigo-400 hover:text-indigo-600 transition-all">
-                                  Adjust
-                                </Button>
+                              <div className="flex items-center justify-end">
                                 {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-300" /> : <ChevronDown className="w-4 h-4 text-gray-300" />}
                               </div>
                             </td>
@@ -367,14 +402,46 @@ export default function BranchInventoryPage() {
         {[
           { label: t('monitor.totalBranches'), value: summary.totalBranches, icon: MapPin, color: 'text-indigo-600 bg-indigo-50' },
           { label: language === 'id' ? 'Produk Kritis' : 'Critical Products', value: summary.criticalProducts, icon: AlertTriangle, color: summary.criticalProducts > 0 ? 'text-rose-600 bg-rose-50' : 'text-gray-400 bg-gray-50' },
-          { label: language === 'id' ? 'Total Nilai Stok' : 'Total Stock Value', value: formatRp(summary.totalStockValue), icon: Wallet, color: 'text-amber-600 bg-amber-50' },
-          { label: language === 'id' ? 'Skor Kesehatan' : 'Health Score', value: `${summary.healthScore}%`, icon: BarChart3, color: summary.healthScore >= 80 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50' },
+          { 
+            label: language === 'id' ? 'Total Nilai Stok' : 'Total Stock Value', 
+            value: formatRp(summary.totalStockValue), 
+            icon: Wallet, 
+            color: 'text-amber-600 bg-amber-50',
+            tooltip: language === 'id' 
+              ? 'Total nilai uang dari seluruh stok yang tersedia (Stok x Harga Jual masing-masing produk).' 
+              : 'Total monetary value of all available stock (Stock x Selling Price of each product).'
+          },
+          { 
+            label: language === 'id' ? 'Skor Kesehatan' : 'Health Score', 
+            value: `${summary.healthScore}%`, 
+            icon: BarChart3, 
+            color: summary.healthScore >= 80 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50',
+            tooltip: language === 'id'
+              ? 'Persentase produk yang memiliki jumlah stok aman/ideal (di atas batas minimum stok / reorder point).'
+              : 'Percentage of products with healthy/ideal stock levels (above minimum stock or reorder point).'
+          },
         ].map(s => (
           <Card key={s.label} className="border-none shadow-sm">
             <CardContent className="p-5 flex items-center gap-3">
               <div className={cn('p-2.5 rounded-xl', s.color)}><s.icon className="w-5 h-5" /></div>
               <div>
-                <p className="text-xs text-gray-400 font-semibold">{s.label}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-gray-400 font-semibold">{s.label}</p>
+                  {s.tooltip && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button className="text-gray-300 hover:text-gray-500 transition-colors">
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-slate-900 text-white rounded-xl p-3 shadow-xl max-w-xs font-sans text-xs border-none">
+                          {s.tooltip}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
                 <p className="text-xl font-black text-gray-900 tracking-tight">{s.value}</p>
               </div>
             </CardContent>

@@ -164,10 +164,10 @@ export default function UsersPage() {
     );
   }
 
-  const superAdminCount = users.filter(u => u.role === 'Super Admin').length;
-  const branchAdminCount = users.filter(u => u.role === 'Branch Admin').length;
-  const memberCount = users.filter(u => u.role === 'Member').length;
-  const activeCount = users.filter(u => u.status === 'Active').length;
+  const superAdminCount = users.filter(u => (u.role || '').toLowerCase() === 'super admin' || (u.role || '').toLowerCase() === 'super_admin').length;
+  const branchAdminCount = users.filter(u => (u.role || '').toLowerCase() === 'branch admin' || (u.role || '').toLowerCase() === 'branch_admin').length;
+  const memberCount = users.filter(u => (u.role || '').toLowerCase() === 'member').length;
+  const activeCount = users.filter(u => (u.status || '').toLowerCase() === 'active').length;
 
   return (
     <PageTransition className="space-y-6 pb-20">
@@ -215,8 +215,8 @@ export default function UsersPage() {
         ) : (
           [
             { label: t('users.totalMember'), value: memberCount, icon: Users2, iconBg: 'bg-violet-50 text-violet-600' },
-            { label: t('users.activeMember'), value: users.filter(u => u.role === 'Member' && u.status === 'Active').length, icon: CircleCheck, iconBg: 'bg-emerald-50 text-emerald-600' },
-            { label: t('users.totalMemberPoints'), value: users.filter(u => u.role === 'Member').reduce((sum, u) => sum + (u.points || 0), 0), icon: Tag, iconBg: 'bg-amber-50 text-amber-600', isMono: true },
+            { label: t('users.activeMember'), value: users.filter(u => (u.role || '').toLowerCase() === 'member' && (u.status || '').toLowerCase() === 'active').length, icon: CircleCheck, iconBg: 'bg-emerald-50 text-emerald-600' },
+            { label: t('users.totalMemberPoints'), value: users.filter(u => (u.role || '').toLowerCase() === 'member').reduce((sum, u) => sum + (u.points || 0), 0), icon: Tag, iconBg: 'bg-amber-50 text-amber-600', isMono: true },
             { label: t('users.serverStatus'), value: 'ONLINE', icon: Shield, iconBg: 'bg-emerald-50 text-emerald-600', isText: true },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
@@ -294,15 +294,15 @@ export default function UsersPage() {
                                 <div className="flex items-center gap-2.5">
                                    <div className={cn(
                                      "p-2 rounded-xl shadow-sm",
-                                     user.role === 'Super Admin' ? "bg-indigo-50 text-indigo-600" :
-                                     user.role === 'Branch Admin' ? "bg-amber-50 text-amber-600" :
-                                     user.role?.toLowerCase() === 'kasir' ? "bg-emerald-50 text-emerald-600" :
-                                     "bg-gray-100 text-gray-500"
+                                    (user.role || '').toLowerCase() === 'super admin' || (user.role || '').toLowerCase() === 'super_admin' ? "bg-indigo-50 text-indigo-600" :
+                                    (user.role || '').toLowerCase() === 'branch admin' || (user.role || '').toLowerCase() === 'branch_admin' ? "bg-amber-50 text-amber-600" :
+                                    user.role?.toLowerCase() === 'kasir' ? "bg-emerald-50 text-emerald-600" :
+                                    "bg-gray-100 text-gray-500"
                                    )}>
                                       <Shield className="w-4 h-4" />
                                    </div>
                                    <span className="text-xs font-black uppercase text-gray-700 tracking-wide">
-                                       {user.role?.toLowerCase() === 'kasir' ? t('users.roleCashier') : user.role === 'Branch Admin' ? t('users.roleBranchAdmin') : user.role}
+                                       {user.role?.toLowerCase() === 'kasir' ? t('users.roleCashier') : ((user.role || '').toLowerCase() === 'branch admin' || (user.role || '').toLowerCase() === 'branch_admin') ? t('users.roleBranchAdmin') : user.role}
                                    </span>
                                 </div>
                              </td>
@@ -328,7 +328,7 @@ export default function UsersPage() {
                                 </div>
                              </td>
                              <td className="py-4">
-                                {user.role === 'Member' ? (
+                                {(user.role || '').toLowerCase() === 'member' ? (
                                   <div className="flex items-center gap-1.5">
                                    <div className="bg-amber-50 text-amber-600 p-1.5 rounded-lg shadow-sm">
                                      <Tag className="w-3.5 h-3.5" />
@@ -343,7 +343,7 @@ export default function UsersPage() {
                              </td>
                              <td className="py-4 text-right pr-6">
                                 <div className="flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-all duration-200">
-                                  {user.role === 'Member' && (
+                                  {(user.role || '').toLowerCase() === 'member' && (
                                     <Button 
                                        onClick={() => {
                                          setSelectedMemberForVoucher(user);
@@ -356,17 +356,19 @@ export default function UsersPage() {
                                        <Gift className="w-5 h-5" strokeWidth={2.5} />
                                     </Button>
                                   )}
-                                  <Button 
-                                     onClick={() => {
-                                       setEditingUser({...user});
-                                       setIsEditModalOpen(true);
-                                     }}
-                                     variant="ghost" 
-                                     size="icon" 
-                                     className="bg-white hover:bg-indigo-50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-[18px] text-indigo-600 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(79,70,229,0.15)] transition-all duration-300 h-12 w-12 flex items-center justify-center"
-                                   >
-                                     <Edit2 className="w-5 h-5" strokeWidth={2.5} />
-                                  </Button>
+                                  {(user.role || '').toLowerCase() !== 'member' && (
+                                    <Button 
+                                      onClick={() => {
+                                        setEditingUser({...user});
+                                        setIsEditModalOpen(true);
+                                      }}
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="bg-white hover:bg-indigo-50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-[18px] text-indigo-600 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(79,70,229,0.15)] transition-all duration-300 h-12 w-12 flex items-center justify-center"
+                                    >
+                                      <Edit2 className="w-5 h-5" strokeWidth={2.5} />
+                                    </Button>
+                                  )}
                                   <button 
                                      onClick={() => {
                                        setUserToDelete(user);

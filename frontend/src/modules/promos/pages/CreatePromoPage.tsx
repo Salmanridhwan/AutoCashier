@@ -82,8 +82,8 @@ export default function CreatePromoPage() {
               discount: d.discount_value?.toString() || '',
               maxDiscount: d.max_discount?.toString() || '',
               minPurchase: d.min_purchase?.toString() || '',
-              startsAt: d.starts_at ? new Date(new Date(d.starts_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16) : '',
-              expiresAt: d.expires_at ? new Date(new Date(d.expires_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16) : '',
+              startsAt: d.starts_at ? new Date(new Date(d.starts_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,10) : '',
+              expiresAt: d.expires_at ? new Date(new Date(d.expires_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,10) : '',
               usageLimit: d.usage_limit?.toString() || '',
               perUserLimit: d.per_user_limit?.toString() || '',
               scope: d.scope || 'ALL',
@@ -108,10 +108,34 @@ export default function CreatePromoPage() {
   }, [id, isEditMode, navigate, language]);
 
   const handleSubmit = async () => {
-    if (!form.code || !form.discount) {
-      toast.error(language === 'id' ? 'Wajib isi Kode Voucher dan Nilai Diskon.' : 'Voucher Code and Discount Value are required.');
+    const code = form.code.trim();
+    const discount = form.discount.trim();
+    const startsAt = form.startsAt.trim();
+    const expiresAt = form.expiresAt.trim();
+    const usageLimit = form.usageLimit.trim();
+    const perUserLimit = form.perUserLimit.trim();
+
+    if (!code || !discount || !startsAt || !expiresAt || !usageLimit || !perUserLimit) {
+      toast.error(language === 'id' 
+        ? 'Semua form wajib diisi (Kode Voucher, Nilai Diskon, Tanggal Mulai, Tanggal Berakhir, Kuota Total, dan Maks. per User).' 
+        : 'All fields are required (Voucher Code, Discount Value, Start Date, Expiry Date, Total Quota, and Max per User).');
       return;
     }
+
+    if (userTargetType === 'SPECIFIC' && selectedUserIds.length === 0) {
+      toast.error(language === 'id' 
+        ? 'Silakan pilih minimal satu target penerima.' 
+        : 'Please select at least one target recipient.');
+      return;
+    }
+
+    if (isSuperAdmin && branchTargetType === 'SPECIFIC' && (!form.scope || form.scope === 'ALL')) {
+      toast.error(language === 'id' 
+        ? 'Silakan pilih cabang spesifik.' 
+        : 'Please select a specific branch.');
+      return;
+    }
+
     const scope = isSuperAdmin
       ? (branchTargetType === 'ALL' ? 'ALL' : form.scope)
       : 'ALL';
@@ -119,17 +143,17 @@ export default function CreatePromoPage() {
     setIsLoading(true);
     try {
       const payload = {
-        title: form.code,
-        code: form.code,
+        title: code,
+        code: code,
         event_name: form.eventName || undefined,
         discount_type: discountType === 'PERCENTAGE' ? 'Percentage' : 'Fixed',
-        discount_value: Number(form.discount),
-        max_discount: form.maxDiscount ? Number(form.maxDiscount) : undefined,
-        min_purchase: form.minPurchase ? Number(form.minPurchase) : undefined,
-        starts_at: form.startsAt ? new Date(form.startsAt).toISOString() : undefined,
-        expires_at: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,
-        usage_limit: form.usageLimit ? Number(form.usageLimit) : undefined,
-        per_user_limit: form.perUserLimit ? Number(form.perUserLimit) : undefined,
+        discount_value: Number(discount.replace(/\D/g, '')),
+        max_discount: form.maxDiscount ? Number(form.maxDiscount.replace(/\D/g, '')) : undefined,
+        min_purchase: form.minPurchase ? Number(form.minPurchase.replace(/\D/g, '')) : undefined,
+        starts_at: startsAt ? new Date(startsAt).toISOString() : undefined,
+        expires_at: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+        usage_limit: usageLimit ? Number(usageLimit) : undefined,
+        per_user_limit: perUserLimit ? Number(perUserLimit) : undefined,
         scope,
         target_user_ids: userTargetType === 'SPECIFIC' ? selectedUserIds : [],
       };
@@ -186,7 +210,7 @@ export default function CreatePromoPage() {
     <PageTransition
       className="min-h-screen -m-6 bg-[#F8FAFC] p-6 lg:p-10 font-sans"
     >
-      <div className="mx-auto max-w-5xl space-y-8">
+      <form onSubmit={e => { e.preventDefault(); handleSubmit(); }} className="mx-auto max-w-5xl space-y-8">
         
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -236,7 +260,7 @@ export default function CreatePromoPage() {
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
                       {language === 'id' ? 'Kode Voucher *' : 'Voucher Code *'}
                     </Label>
-                    <Input placeholder="LEBARAN25" className="rounded-2xl h-11 bg-gray-50 border-gray-100 px-4 font-black uppercase font-mono text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all tracking-widest" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} />
+                    <Input required placeholder="LEBARAN25" className="rounded-2xl h-11 bg-gray-50 border-gray-100 px-4 font-black uppercase font-mono text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all tracking-widest" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} />
                   </div>
                 </div>
               </div>
@@ -270,6 +294,7 @@ export default function CreatePromoPage() {
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-sm">{discountType === 'PERCENTAGE' ? '%' : 'Rp'}</span>
                       <Input 
+                        required
                         type={discountType === 'PERCENTAGE' ? 'number' : 'text'} 
                         placeholder={discountType === 'PERCENTAGE' ? '20' : '15.000'} 
                         className="rounded-2xl h-11 bg-gray-50 border-gray-100 pl-9 pr-4 font-bold text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" 
@@ -332,36 +357,34 @@ export default function CreatePromoPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                      {language === 'id' ? 'Mulai Berlaku' : 'Start Date'}
+                      {language === 'id' ? 'Mulai Berlaku *' : 'Start Date *'}
                     </Label>
-                    <Input type="datetime-local" className="rounded-2xl h-11 bg-gray-50 border-gray-100 px-4 font-bold text-xs focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" value={form.startsAt} onChange={e => setForm({ ...form, startsAt: e.target.value })} />
+                    <Input required type="date" className="rounded-2xl h-11 bg-gray-50 border-gray-100 px-4 font-bold text-xs focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" value={form.startsAt} onChange={e => { setForm({ ...form, startsAt: e.target.value }); (e.target as HTMLInputElement).blur(); }} />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                      {language === 'id' ? 'Berakhir Pada' : 'Expiry Date'}
+                      {language === 'id' ? 'Berakhir Pada *' : 'Expiry Date *'}
                     </Label>
-                    <Input type="datetime-local" className="rounded-2xl h-11 bg-gray-50 border-gray-100 px-4 font-bold text-xs focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" value={form.expiresAt} onChange={e => setForm({ ...form, expiresAt: e.target.value })} />
+                    <Input required type="date" className="rounded-2xl h-11 bg-gray-50 border-gray-100 px-4 font-bold text-xs focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" value={form.expiresAt} onChange={e => { setForm({ ...form, expiresAt: e.target.value }); (e.target as HTMLInputElement).blur(); }} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                      {language === 'id' ? 'Kuota Total ' : 'Total Quota '}
-                      <span className="text-gray-300 font-semibold normal-case">({language === 'id' ? 'kosong = tak terbatas' : 'empty = unlimited'})</span>
+                      {language === 'id' ? 'Kuota Total *' : 'Total Quota *'}
                     </Label>
                     <div className="relative">
                       <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                      <Input type="number" placeholder="100" className="rounded-2xl h-11 bg-gray-50 border-gray-100 pl-10 pr-4 font-bold text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" value={form.usageLimit} onChange={e => setForm({ ...form, usageLimit: e.target.value })} />
+                      <Input required type="number" min="1" placeholder="100" className="rounded-2xl h-11 bg-gray-50 border-gray-100 pl-10 pr-4 font-bold text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" value={form.usageLimit} onChange={e => setForm({ ...form, usageLimit: e.target.value })} />
                     </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                      {language === 'id' ? 'Maks. per User ' : 'Max per User '}
-                      <span className="text-gray-300 font-semibold normal-case">({language === 'id' ? 'opsional' : 'optional'})</span>
+                      {language === 'id' ? 'Maks. per User *' : 'Max per User *'}
                     </Label>
                     <div className="relative">
                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                      <Input type="number" placeholder="1" className="rounded-2xl h-11 bg-gray-50 border-gray-100 pl-10 pr-4 font-bold text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" value={form.perUserLimit} onChange={e => setForm({ ...form, perUserLimit: e.target.value })} />
+                      <Input required type="number" min="1" placeholder="1" className="rounded-2xl h-11 bg-gray-50 border-gray-100 pl-10 pr-4 font-bold text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" value={form.perUserLimit} onChange={e => setForm({ ...form, perUserLimit: e.target.value })} />
                     </div>
                   </div>
                 </div>
@@ -554,7 +577,7 @@ export default function CreatePromoPage() {
         
         <div className="pt-4 pb-12">
           <Button
-            onClick={handleSubmit}
+            type="submit"
             disabled={isLoading}
             className="h-16 w-full rounded-2xl bg-indigo-600 text-base font-black text-white shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-60 transition-all"
           >
@@ -570,7 +593,7 @@ export default function CreatePromoPage() {
                 : (language === 'id' ? 'Aktifkan Campaign' : 'Activate Campaign'))}
           </Button>
         </div>
-      </div>
+      </form>
     </PageTransition>
   );
 }

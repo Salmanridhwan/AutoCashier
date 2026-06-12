@@ -6,6 +6,7 @@ import {
   Cpu, Database, Play, Loader2, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Server, Upload, ImageOff,
   BarChart3, ShieldCheck, Cloud,
 } from 'lucide-react';
+import { useLanguage } from '@/shared/context/LanguageContext';
 
 const API = '/api/kasir/vision';
 
@@ -105,6 +106,7 @@ interface ModelVersion {
 const percent = (value?: number) => `${((value || 0) * 100).toFixed(1)}%`;
 
 export default function AITrainingPage() {
+  const { language } = useLanguage();
   const [health, setHealth] = React.useState<any>(null);
   const [dataset, setDataset] = React.useState<DatasetSummary | null>(null);
   const [building, setBuilding] = React.useState(false);
@@ -678,55 +680,91 @@ export default function AITrainingPage() {
       <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Cloud className="size-5 text-indigo-600" />
-          <h2 className="text-lg font-bold text-gray-900">4. Sinkronisasi Model (Laptop Kasir)</h2>
+          <h2 className="text-lg font-bold text-gray-900">
+            {language === 'id' ? '4. Sinkronisasi Model' : '4. Model Sync'}
+          </h2>
         </div>
         <p className="text-sm text-gray-600">
-          Gunakan panel ini di laptop kasir untuk mengunduh model terbaru yang sudah dilatih di laptop training.
-          Server akan mengunduh model dari Supabase Storage dan me-reload model baru secara otomatis tanpa restart.
+          {language === 'id'
+            ? 'Gunakan panel ini di laptop kasir untuk mengunduh model terbaru yang sudah dilatih di laptop training. Server akan mengunduh model dari Supabase Storage dan me-reload model baru secara otomatis tanpa restart.'
+            : 'Use this panel on the cashier laptop to download the latest model trained on the training laptop. The server will download the model from Supabase Storage and reload it automatically without restarting.'}
         </p>
 
         <div className="grid md:grid-cols-2 gap-4">
           {/* Local Model Info */}
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-2">
             <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Model Aktif di Laptop Ini
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>{' '}
+              {language === 'id' ? 'Model Aktif di Laptop Ini' : 'Active Model on This Laptop'}
             </h3>
             {versionInfo?.local?.exists ? (
               <div className="text-xs space-y-1 text-gray-600">
-                <p>Akurasi: <span className="font-bold text-gray-900">{percent(versionInfo.local.accuracy ?? undefined)}</span></p>
-                <p>Jumlah Kelas: <span className="font-bold text-gray-900">{versionInfo.local.num_classes}</span></p>
+                <p>
+                  {language === 'id' ? 'Akurasi: ' : 'Accuracy: '}
+                  <span className="font-bold text-gray-900">{percent(versionInfo.local.accuracy ?? undefined)}</span>
+                </p>
+                <p>
+                  {language === 'id' ? 'Jumlah Kelas: ' : 'Classes Count: '}
+                  <span className="font-bold text-gray-900">{versionInfo.local.num_classes}</span>
+                </p>
                 {versionInfo.local.synced_at && (
-                  <p>Tanggal Sinkronisasi: <span className="font-bold text-gray-900">{new Date(versionInfo.local.synced_at).toLocaleString('id-ID')}</span></p>
+                  <p>
+                    {language === 'id' ? 'Tanggal Sinkronisasi: ' : 'Sync Date: '}
+                    <span className="font-bold text-gray-900">
+                      {new Date(versionInfo.local.synced_at).toLocaleString(language === 'id' ? 'id-ID' : 'en-US')}
+                    </span>
+                  </p>
                 )}
                 {versionInfo.local.labels && (
-                  <p className="line-clamp-2">Kelas: {versionInfo.local.labels.join(', ')}</p>
+                  <p className="line-clamp-2">
+                    {language === 'id' ? 'Kelas: ' : 'Classes: '}
+                    {versionInfo.local.labels.join(', ')}
+                  </p>
                 )}
               </div>
             ) : (
-              <p className="text-xs text-gray-500">Belum ada model aktif lokal.</p>
+              <p className="text-xs text-gray-500">
+                {language === 'id' ? 'Belum ada model aktif lokal.' : 'No active local model found.'}
+              </p>
             )}
           </div>
 
           {/* Cloud Model Info */}
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-2">
             <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Model Terbaru di Cloud
+              <span className="w-2 h-2 rounded-full bg-indigo-500"></span>{' '}
+              {language === 'id' ? 'Model Terbaru di Cloud' : 'Latest Model in Cloud'}
             </h3>
             {versionInfo?.cloud?.exists ? (
               <div className="text-xs space-y-1 text-gray-600">
-                <p>Ukuran Zip: <span className="font-bold text-gray-900">{(versionInfo.cloud.size_bytes / (1024 * 1024)).toFixed(2)} MB</span></p>
-                <p>Diperbarui: <span className="font-bold text-gray-900">{new Date(versionInfo.cloud.updated_at).toLocaleString('id-ID')}</span></p>
+                <p>
+                  {language === 'id' ? 'Ukuran Zip: ' : 'Zip Size: '}
+                  <span className="font-bold text-gray-900">
+                    {(versionInfo.cloud.size_bytes / (1024 * 1024)).toFixed(2)} MB
+                  </span>
+                </p>
+                <p>
+                  {language === 'id' ? 'Diperbarui: ' : 'Updated: '}
+                  <span className="font-bold text-gray-900">
+                    {new Date(versionInfo.cloud.updated_at).toLocaleString(language === 'id' ? 'id-ID' : 'en-US')}
+                  </span>
+                </p>
                 {versionInfo.local.synced_at && versionInfo.cloud.updated_at && 
                  new Date(versionInfo.cloud.updated_at) > new Date(versionInfo.local.synced_at) && (
                   <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                    <AlertTriangle className="size-3 text-amber-500" /> Update Tersedia
+                    <AlertTriangle className="size-3 text-amber-500" />{' '}
+                    {language === 'id' ? 'Update Tersedia' : 'Update Available'}
                   </div>
                 )}
               </div>
             ) : versionInfo?.cloud?.exists === false ? (
-              <p className="text-xs text-gray-500">Belum ada model yang diunggah ke cloud.</p>
+              <p className="text-xs text-gray-500">
+                {language === 'id' ? 'Belum ada model yang diunggah ke cloud.' : 'No cloud model uploaded yet.'}
+              </p>
             ) : (
-              <p className="text-xs text-gray-500">Menghubungi cloud...</p>
+              <p className="text-xs text-gray-500">
+                {language === 'id' ? 'Menghubungi cloud...' : 'Connecting to cloud...'}
+              </p>
             )}
           </div>
         </div>
@@ -738,9 +776,9 @@ export default function AITrainingPage() {
             className="bg-indigo-600 hover:bg-indigo-700 text-white"
           >
             {syncState.state === 'running' ? (
-              <><Loader2 className="size-4 mr-2 animate-spin" /> Sinkronisasi...</>
+              <><Loader2 className="size-4 mr-2 animate-spin" /> {language === 'id' ? 'Sinkronisasi...' : 'Syncing...'}</>
             ) : (
-              <><Cloud className="size-4 mr-2" /> Sync Model dari Cloud</>
+              <><Cloud className="size-4 mr-2" /> {language === 'id' ? 'Sync Model dari Cloud' : 'Sync Model from Cloud'}</>
             )}
           </Button>
 
@@ -751,12 +789,12 @@ export default function AITrainingPage() {
           )}
           {syncState.state === 'done' && (
             <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
-              <CheckCircle2 className="size-3" /> Berhasil disinkronkan
+              <CheckCircle2 className="size-3" /> {language === 'id' ? 'Berhasil disinkronkan' : 'Synced successfully'}
             </span>
           )}
           {syncState.state === 'error' && (
             <span className="flex items-center gap-1.5 text-xs text-rose-600 font-semibold">
-              <XCircle className="size-3" /> Gagal: {syncState.message}
+              <XCircle className="size-3" /> {language === 'id' ? 'Gagal: ' : 'Failed: '}{syncState.message}
             </span>
           )}
         </div>

@@ -465,7 +465,7 @@ export default function DashboardLayout({children}: {children: ReactNode}) {
                     <div className="absolute right-0 mt-2 w-80 rounded-3xl p-4 bg-white border border-gray-100 shadow-2xl space-y-4 z-50 text-left font-sans animate-in fade-in slide-in-from-top-2 duration-200">
                        <div className="flex justify-between items-center">
                           <span className="font-black text-gray-900 uppercase text-[10px] tracking-widest text-indigo-600">
-                            {t('notif.communicationCenter')} ({notifications.length})
+                            {t('notif.communicationCenter')} ({unreadCount})
                           </span>
                           {unreadCount > 0 && (
                             <button onClick={markAllAsRead} className="text-[10px] font-black uppercase text-indigo-500 hover:text-indigo-700 transition border-none bg-transparent">

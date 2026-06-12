@@ -43,6 +43,19 @@ import {
   CommandList,
 } from '@/shared/components/ui/command';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import { useAuth } from '@/shared/context/AuthContext';
 import { useLocation } from '@/shared/context/LocationContext';
 import { fetchBackend } from '@/shared/lib/api';
@@ -218,7 +231,16 @@ export default function TransactionsPage() {
   const statCards = [
     { label: t('transactions.totalTransactions'),  value: stats.totalCount.toLocaleString(language === 'id' ? 'id-ID' : 'en-US'),    icon: ShoppingCart, color: 'text-indigo-600',  bg: 'bg-indigo-50' },
     { label: t('transactions.totalRevenue'), value: formatRupiah(stats.totalRevenue),             icon: TrendingUp,   color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: t('transactions.avgOrder'),  value: formatRupiah(stats.avgOrder),                 icon: Receipt,      color: 'text-amber-600',   bg: 'bg-amber-50' },
+    { 
+      label: t('transactions.avgOrder'),  
+      value: formatRupiah(stats.avgOrder),                 
+      icon: Receipt,      
+      color: 'text-amber-600',   
+      bg: 'bg-amber-50',
+      tooltip: language === 'id'
+        ? 'Rata-rata per transaksi: Total Pendapatan dibagi dengan Jumlah Transaksi'
+        : 'Average per transaction: Total Revenue divided by Total Transactions'
+    },
     { label: t('transactions.completed'),          value: stats.completedCount.toLocaleString(language === 'id' ? 'id-ID' : 'en-US'), icon: CreditCard,   color: 'text-purple-600',  bg: 'bg-purple-50' },
   ];
 
@@ -249,7 +271,6 @@ export default function TransactionsPage() {
         </Button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => (
           <Card key={card.label} className="rounded-[28px] border-none shadow-sm bg-white">
@@ -257,8 +278,26 @@ export default function TransactionsPage() {
               <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0', card.bg)}>
                 <card.icon className={cn('w-5 h-5', card.color)} />
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest truncate">{card.label}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest truncate">{card.label}</p>
+                  {card.tooltip && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex cursor-help text-gray-300 hover:text-gray-400 transition-colors">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-slate-900 text-white rounded-xl p-3 shadow-xl max-w-xs font-sans text-xs border-none">
+                          {card.tooltip}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
                 <p className="text-lg font-black text-gray-900 truncate mt-0.5">{card.value}</p>
               </div>
             </CardContent>
@@ -344,30 +383,67 @@ export default function TransactionsPage() {
             />
           </div>
 
-          {/* Sort — 4 options */}
-          <div className="flex items-center bg-white rounded-2xl shadow-sm p-1.5 gap-1 h-14">
-            {([
-              { v: 'desc',    label: t('transactions.newest'),   icon: ArrowDown },
-              { v: 'asc',     label: t('transactions.oldest'),   icon: ArrowUp },
-              { v: 'highest', label: t('transactions.highest'),  icon: TrendingUp },
-              { v: 'lowest',  label: t('transactions.lowest'),  icon: TrendingDown },
-            ] as const).map(({ v, label, icon: Icon }) => (
-              <button
-                key={v}
-                onClick={() => setSortOrder(v)}
-                className={cn(
-                  'flex items-center gap-1.5 h-full px-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap',
-                  sortOrder === v
-                    ? v === 'highest' ? 'bg-emerald-600 text-white shadow-sm'
-                    : v === 'lowest'  ? 'bg-rose-500 text-white shadow-sm'
-                    : 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
+          {/* Sort Filters */}
+          <div className="flex items-center gap-2">
+            {/* Sort by Date */}
+            <Select 
+              value={['desc', 'asc'].includes(sortOrder) ? sortOrder : 'none'} 
+              onValueChange={(val) => {
+                if (val === 'none') {
+                  setSortOrder('desc');
+                } else {
+                  setSortOrder(val as any);
+                }
+              }}
+            >
+              <SelectTrigger className="!h-14 bg-white border-none rounded-2xl shadow-sm px-4 text-xs font-bold text-gray-600 hover:text-indigo-600 transition-all min-w-[140px] flex items-center justify-between gap-1.5 focus:ring-2 focus:ring-indigo-500">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <SelectValue placeholder={language === 'id' ? 'Waktu' : 'Date'} />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-white border-gray-100 rounded-2xl shadow-xl p-2 font-sans">
+                <SelectItem value="none" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold text-gray-400">
+                  —
+                </SelectItem>
+                <SelectItem value="desc" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">
+                  {t('transactions.newest')}
+                </SelectItem>
+                <SelectItem value="asc" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">
+                  {t('transactions.oldest')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Sort by Amount */}
+            <Select 
+              value={['highest', 'lowest'].includes(sortOrder) ? sortOrder : 'none'} 
+              onValueChange={(val) => {
+                if (val === 'none') {
+                  setSortOrder('desc');
+                } else {
+                  setSortOrder(val as any);
+                }
+              }}
+            >
+              <SelectTrigger className="!h-14 bg-white border-none rounded-2xl shadow-sm px-4 text-xs font-bold text-gray-600 hover:text-indigo-600 transition-all min-w-[140px] flex items-center justify-between gap-1.5 focus:ring-2 focus:ring-indigo-500">
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <SelectValue placeholder={language === 'id' ? 'Nominal' : 'Amount'} />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-white border-gray-100 rounded-2xl shadow-xl p-2 font-sans">
+                <SelectItem value="none" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold text-gray-400">
+                  —
+                </SelectItem>
+                <SelectItem value="highest" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">
+                  {t('transactions.highest')}
+                </SelectItem>
+                <SelectItem value="lowest" className="rounded-xl p-3 focus:bg-indigo-50 cursor-pointer text-xs font-bold">
+                  {t('transactions.lowest')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Reset — only shown when filters are active */}

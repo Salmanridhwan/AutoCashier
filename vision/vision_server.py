@@ -669,6 +669,24 @@ SYNC_MODEL_STATUS = {"state": "idle", "message": "", "detail": {}}
 _sync_model_lock = threading.Lock()
 
 
+def _ensure_bucket_exists(bucket_name):
+    if not product_repo or not product_repo.client:
+        return
+    try:
+        product_repo.client.storage.get_bucket(bucket_name)
+    except Exception as e:
+        err_msg = str(e).lower()
+        if "not found" in err_msg or "404" in err_msg:
+            print(f"[CLOUD-SYNC] Bucket '{bucket_name}' not found. Attempting to create it...")
+            try:
+                product_repo.client.storage.create_bucket(bucket_name, options={"public": False})
+                print(f"[CLOUD-SYNC] Bucket '{bucket_name}' created successfully.")
+            except Exception as create_err:
+                print(f"[CLOUD-SYNC] Failed to create bucket '{bucket_name}': {create_err}")
+        else:
+            print(f"[CLOUD-SYNC] Error checking bucket '{bucket_name}': {e}")
+
+
 def _upload_model_to_cloud():
     """Zip essential model files and upload to Supabase Storage after training."""
     if not product_repo or not product_repo.client:
@@ -703,6 +721,7 @@ def _upload_model_to_cloud():
             zf.writestr("cloud_metadata.json", json.dumps(metadata, indent=2))
 
         # Upload to Supabase Storage
+        _ensure_bucket_exists(MODEL_CLOUD_BUCKET)
         bucket = product_repo.client.storage.from_(MODEL_CLOUD_BUCKET)
         with open(tmp_zip, "rb") as f:
             file_bytes = f.read()
@@ -738,11 +757,18 @@ def _download_model_from_cloud():
     if not product_repo or not product_repo.client:
         raise RuntimeError("Supabase client not available.")
 
+    _ensure_bucket_exists(MODEL_CLOUD_BUCKET)
     bucket = product_repo.client.storage.from_(MODEL_CLOUD_BUCKET)
     # Download the zip
-    file_bytes = bucket.download(MODEL_CLOUD_FILENAME)
+    try:
+        file_bytes = bucket.download(MODEL_CLOUD_FILENAME)
+    except Exception as e:
+        err_msg = str(e).lower()
+        if "not found" in err_msg or "404" in err_msg:
+            raise FileNotFoundError("Model belum diunggah/ditemukan di cloud. Silakan lakukan training (Langkah 2) terlebih dahulu.")
+        raise e
     if not file_bytes:
-        raise FileNotFoundError("No model found in cloud storage.")
+        raise FileNotFoundError("Model belum diunggah/ditemukan di cloud. Silakan lakukan training (Langkah 2) terlebih dahulu.")
 
     # Write to temp file and extract
     tmp_zip = os.path.join("models", "_cloud_download.zip")
@@ -782,6 +808,7 @@ def _get_cloud_model_metadata():
     if not product_repo or not product_repo.client:
         return None
     try:
+        _ensure_bucket_exists(MODEL_CLOUD_BUCKET)
         bucket = product_repo.client.storage.from_(MODEL_CLOUD_BUCKET)
         files = bucket.list()
         for f in files:

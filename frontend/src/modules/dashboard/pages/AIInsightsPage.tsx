@@ -144,10 +144,9 @@ Overall business health is categorized as **Optimum (94.2%)**. However, neural c
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <div className="w-full">
         {/* Main Chat Area */}
-        <div className="lg:col-span-2">
-          <Card className="rounded-[40px] border-none shadow-2xl shadow-indigo-600/5 bg-white flex flex-col h-[650px] overflow-hidden">
+        <Card className="rounded-[40px] border-none shadow-2xl shadow-indigo-600/5 bg-white flex flex-col h-[650px] overflow-hidden">
             <div className="flex-1 overflow-y-auto p-10 space-y-8 scrollbar-hide">
               {chatMessages.map((msg, i) => (
                 <motion.div
@@ -210,50 +209,6 @@ Overall business health is categorized as **Optimum (94.2%)**. However, neural c
               </form>
             </div>
           </Card>
-        </div>
-
-        {/* Sidebar Summary */}
-        <div className="space-y-6">
-          <Card className="rounded-[40px] border-none shadow-2xl shadow-indigo-600/5 bg-white p-10 group overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 blur-3xl rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
-            <div className="relative">
-              <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
-                <BrainCircuit className="w-6 h-6 text-indigo-600" />
-              </div>
-              <h4 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">{language === 'id' ? 'Insight Neural' : 'Neural Insights'}</h4>
-              <div className="space-y-6">
-                <div>
-                  <h5 className="text-xl font-black tracking-tighter text-gray-900 leading-tight">{language === 'id' ? 'Laporan Optimasi' : 'Optimization Report'}</h5>
-                  <p className="text-xs text-gray-500 font-medium mt-3 leading-relaxed">
-                    {language === 'id' ? 'Sistem menyarankan pergeseran inventaris berdampak tinggi karena lonjakan permintaan yang berkorelasi dengan cuaca. Terapkan untuk mendapatkan efisiensi jaringan 14%.' : 'System suggests high-impact inventory shifting due to weather-correlated demand spikes. Apply to gain 14% network efficiency.'}
-                  </p>
-                </div>
-                <Button className="w-full bg-indigo-600/5 hover:bg-indigo-600/10 text-indigo-600 h-14 rounded-2xl font-black uppercase tracking-widest text-[10px] border-none transition-all">
-                  {language === 'id' ? 'Terapkan Optimasi Global' : 'Apply Global Optimization'}
-                </Button>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="rounded-[40px] border-none shadow-2xl shadow-indigo-600/5 bg-white p-10">
-            <h4 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-6">{language === 'id' ? 'Kluster Aktif' : 'Active Clusters'}</h4>
-            <div className="space-y-4">
-              {[
-                { name: 'Jakarta Nodes', status: language === 'id' ? 'Optimal' : 'Optimal', pulse: 'bg-emerald-500' },
-                { name: 'West Network', status: language === 'id' ? 'Menyinkronkan' : 'Syncing', pulse: 'bg-amber-500' },
-                { name: 'Bandung Core', status: language === 'id' ? 'Beban Puncak' : 'Peak Load', pulse: 'bg-indigo-500' },
-              ].map(cluster => (
-                <div key={cluster.name} className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-900">{cluster.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">{cluster.status}</span>
-                    <div className={cn("w-2 h-2 rounded-full animate-pulse", cluster.pulse)} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
       </div>
     </PageTransition>
   );
