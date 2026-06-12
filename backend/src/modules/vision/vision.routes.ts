@@ -21,4 +21,9 @@ router.post('/evaluate', visionController.startEvaluation);
 router.get('/evaluation-status', visionController.evaluationStatus);
 router.get('/evaluation-report', visionController.evaluationReport);
 
+// Cloud model sync
+router.post('/sync-model', visionController.syncModel);
+router.get('/sync-model-status', visionController.syncModelStatus);
+router.get('/model-version', visionController.modelVersion);
+
 export default router;

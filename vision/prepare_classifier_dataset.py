@@ -4,7 +4,10 @@ import os
 import shutil
 import time
 
-from PIL import Image
+from PIL import Image, ImageFile
+# Allow loading truncated/corrupted images to avoid OSError crashes
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 import torch
 from ultralytics import YOLOWorld
 
@@ -139,10 +142,27 @@ def prepare_runtime_classifier_dataset(
         for offset in range(0, len(pending), batch_size):
             batch_items = pending[offset:offset + batch_size]
             images = []
+            valid_batch_items = []
             try:
-                for source_path, _relative_path, _destination, _signature in batch_items:
-                    with Image.open(source_path) as source_image:
-                        images.append(source_image.convert("RGB"))
+                for item in batch_items:
+                    source_path, _relative_path, _destination, _signature = item
+                    try:
+                        with Image.open(source_path) as source_image:
+                            img_converted = source_image.convert("RGB")
+                            # Force load to check for truncation issues early
+                            img_converted.load()
+                            images.append(img_converted)
+                            valid_batch_items.append(item)
+                    except Exception as e:
+                        print(f"[PREPROCESS-DATASET] ⚠️ Gambar rusak/korep dilewati ({source_path}): {e}")
+                        # delete the corrupted file so it doesn't cause problems in the future
+                        try:
+                            os.remove(source_path)
+                        except Exception:
+                            pass
+
+                if not images:
+                    continue
 
                 with torch.inference_mode():
                     results = detector.predict(
@@ -151,10 +171,10 @@ def prepare_runtime_classifier_dataset(
                         verbose=False,
                         device=device,
                         half=use_half,
-                        batch=batch_size,
+                        batch=len(images),
                     )
 
-                for item, image, result in zip(batch_items, images, results):
+                for item, image, result in zip(valid_batch_items, images, results):
                     _source_path, relative_path, destination, signature = item
                     os.makedirs(os.path.dirname(destination), exist_ok=True)
                     crop, crop_metadata = crop_product_from_result(
@@ -177,7 +197,10 @@ def prepare_runtime_classifier_dataset(
                     stats["processed_images"] += 1
             finally:
                 for image in images:
-                    image.close()
+                    try:
+                        image.close()
+                    except Exception:
+                        pass
 
             completed = min(offset + len(batch_items), len(pending))
             if completed % 100 < batch_size or completed == len(pending):

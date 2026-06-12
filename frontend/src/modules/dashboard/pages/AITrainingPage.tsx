@@ -4,7 +4,7 @@ import { Card } from '@/shared/components/ui/card';
 import { toast } from 'sonner';
 import {
   Cpu, Database, Play, Loader2, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Server, Upload, ImageOff,
-  BarChart3, ShieldCheck,
+  BarChart3, ShieldCheck, Cloud,
 } from 'lucide-react';
 
 const API = '/api/kasir/vision';
@@ -83,6 +83,25 @@ interface DatasetSummary {
   } | null;
 }
 
+interface ModelVersion {
+  local: {
+    exists: boolean;
+    accuracy?: number | null;
+    num_classes?: number;
+    labels?: string[];
+    train_runtime?: number;
+    synced_at?: string;
+    source_machine?: string;
+  };
+  cloud: {
+    exists: boolean;
+    file_name?: string;
+    updated_at?: string;
+    size_bytes?: number;
+    error?: string;
+  } | null;
+}
+
 const percent = (value?: number) => `${((value || 0) * 100).toFixed(1)}%`;
 
 export default function AITrainingPage() {
@@ -94,8 +113,11 @@ export default function AITrainingPage() {
   const [evaluationState, setEvaluationState] = React.useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [evaluationReport, setEvaluationReport] = React.useState<EvaluationReport | null>(null);
   const [evaluationMessage, setEvaluationMessage] = React.useState('');
+  const [versionInfo, setVersionInfo] = React.useState<ModelVersion | null>(null);
+  const [syncState, setSyncState] = React.useState<{ state: 'idle' | 'running' | 'done' | 'error'; message?: string }>({ state: 'idle' });
   const pollRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const evaluationPollRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const syncPollRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [bgCount, setBgCount] = React.useState<number | null>(null);
   const [bgUploading, setBgUploading] = React.useState(false);
@@ -141,6 +163,24 @@ export default function AITrainingPage() {
     } catch { /* no report yet */ }
   }, []);
 
+  const fetchVersionInfo = React.useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/model-version`, { headers: authHeaders(false) });
+      if (res.ok) setVersionInfo(await res.json());
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchSyncStatus = React.useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/sync-model-status`, { headers: authHeaders(false) });
+      const data = await res.json();
+      setSyncState(data);
+      return data;
+    } catch {
+      return { state: 'error', message: 'Gagal menghubungi server' };
+    }
+  }, []);
+
   const fetchBg = React.useCallback(async () => {
     try {
       const res = await fetch('/api/shared/products/background', { headers: authHeaders(false) });
@@ -154,11 +194,13 @@ export default function AITrainingPage() {
     fetchStatus();
     fetchBg();
     fetchEvaluationReport();
+    fetchVersionInfo();
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (evaluationPollRef.current) clearInterval(evaluationPollRef.current);
+      if (syncPollRef.current) clearInterval(syncPollRef.current);
     };
-  }, [checkHealth, fetchStatus, fetchBg, fetchEvaluationReport]);
+  }, [checkHealth, fetchStatus, fetchBg, fetchEvaluationReport, fetchVersionInfo]);
 
   const handleBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -197,6 +239,7 @@ export default function AITrainingPage() {
             if (s.state === 'done') {
               const acc = s.detail?.accuracy;
               toast.success(`Pelatihan selesai! ${acc != null ? `Akurasi: ${(acc * 100).toFixed(1)}%` : ''}`);
+              fetchVersionInfo();
             } else if (s.state === 'error') {
               if (s.detail?.candidate_rejected) {
                 toast.warning('Kandidat training ditolak. Model aktif yang lebih akurat tetap digunakan.');
@@ -275,7 +318,7 @@ export default function AITrainingPage() {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
-          video_aug_repeats: 1,
+          video_aug_repeats: 3,
           use_classifier_cache: true,
         }),
       });
@@ -328,6 +371,42 @@ export default function AITrainingPage() {
       setEvaluationState('error');
       setEvaluationMessage(error.message || 'Evaluasi scanner gagal');
       toast.error(error.message || 'Evaluasi scanner gagal');
+    }
+  };
+
+  const handleSyncModel = async () => {
+    setSyncState({ state: 'running', message: 'Memulai sinkronisasi...' });
+    try {
+      const res = await fetch(`${API}/sync-model`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.message || 'Gagal memulai sinkronisasi model');
+        setSyncState({ state: 'error', message: data.message || 'Gagal memulai sinkronisasi' });
+        return;
+      }
+
+      toast.info('Sinkronisasi model ke cloud dimulai...');
+      
+      syncPollRef.current = setInterval(async () => {
+        const status = await fetchSyncStatus();
+        if (status.state === 'done') {
+          if (syncPollRef.current) clearInterval(syncPollRef.current);
+          syncPollRef.current = null;
+          toast.success('Model berhasil disinkronisasi dan di-reload!');
+          fetchVersionInfo();
+          checkHealth();
+        } else if (status.state === 'error') {
+          if (syncPollRef.current) clearInterval(syncPollRef.current);
+          syncPollRef.current = null;
+          toast.error(`Sinkronisasi gagal: ${status.message || ''}`);
+        }
+      }, 2000);
+    } catch {
+      toast.error('Vision server tidak dapat dijangkau');
+      setSyncState({ state: 'error', message: 'Vision server tidak terjangkau' });
     }
   };
 
@@ -593,6 +672,94 @@ export default function AITrainingPage() {
             </div>
           </div>
         )}
+      </Card>
+
+      {/* Step 4: Cloud model sync */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Cloud className="size-5 text-indigo-600" />
+          <h2 className="text-lg font-bold text-gray-900">4. Sinkronisasi Model (Laptop Kasir)</h2>
+        </div>
+        <p className="text-sm text-gray-600">
+          Gunakan panel ini di laptop kasir untuk mengunduh model terbaru yang sudah dilatih di laptop training.
+          Server akan mengunduh model dari Supabase Storage dan me-reload model baru secara otomatis tanpa restart.
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Local Model Info */}
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-2">
+            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Model Aktif di Laptop Ini
+            </h3>
+            {versionInfo?.local?.exists ? (
+              <div className="text-xs space-y-1 text-gray-600">
+                <p>Akurasi: <span className="font-bold text-gray-900">{percent(versionInfo.local.accuracy ?? undefined)}</span></p>
+                <p>Jumlah Kelas: <span className="font-bold text-gray-900">{versionInfo.local.num_classes}</span></p>
+                {versionInfo.local.synced_at && (
+                  <p>Tanggal Sinkronisasi: <span className="font-bold text-gray-900">{new Date(versionInfo.local.synced_at).toLocaleString('id-ID')}</span></p>
+                )}
+                {versionInfo.local.labels && (
+                  <p className="line-clamp-2">Kelas: {versionInfo.local.labels.join(', ')}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">Belum ada model aktif lokal.</p>
+            )}
+          </div>
+
+          {/* Cloud Model Info */}
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-2">
+            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Model Terbaru di Cloud
+            </h3>
+            {versionInfo?.cloud?.exists ? (
+              <div className="text-xs space-y-1 text-gray-600">
+                <p>Ukuran Zip: <span className="font-bold text-gray-900">{(versionInfo.cloud.size_bytes / (1024 * 1024)).toFixed(2)} MB</span></p>
+                <p>Diperbarui: <span className="font-bold text-gray-900">{new Date(versionInfo.cloud.updated_at).toLocaleString('id-ID')}</span></p>
+                {versionInfo.local.synced_at && versionInfo.cloud.updated_at && 
+                 new Date(versionInfo.cloud.updated_at) > new Date(versionInfo.local.synced_at) && (
+                  <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                    <AlertTriangle className="size-3 text-amber-500" /> Update Tersedia
+                  </div>
+                )}
+              </div>
+            ) : versionInfo?.cloud?.exists === false ? (
+              <p className="text-xs text-gray-500">Belum ada model yang diunggah ke cloud.</p>
+            ) : (
+              <p className="text-xs text-gray-500">Menghubungi cloud...</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={handleSyncModel} 
+            disabled={!online || isTraining || syncState.state === 'running'} 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            {syncState.state === 'running' ? (
+              <><Loader2 className="size-4 mr-2 animate-spin" /> Sinkronisasi...</>
+            ) : (
+              <><Cloud className="size-4 mr-2" /> Sync Model dari Cloud</>
+            )}
+          </Button>
+
+          {syncState.state === 'running' && syncState.message && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600 font-semibold">
+              <Loader2 className="size-3 animate-spin" /> {syncState.message}
+            </span>
+          )}
+          {syncState.state === 'done' && (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+              <CheckCircle2 className="size-3" /> Berhasil disinkronkan
+            </span>
+          )}
+          {syncState.state === 'error' && (
+            <span className="flex items-center gap-1.5 text-xs text-rose-600 font-semibold">
+              <XCircle className="size-3" /> Gagal: {syncState.message}
+            </span>
+          )}
+        </div>
       </Card>
     </div>
   );

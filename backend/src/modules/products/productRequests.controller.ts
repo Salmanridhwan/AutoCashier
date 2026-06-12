@@ -3,6 +3,8 @@ import { supabaseAdmin } from '../../config/supabaseClient.js';
 import * as productService from '../products/product.service.js';
 import { v4 as uuidv4 } from 'uuid';
 import { generateOcrKeywords } from './product-ai.utils.js';
+import fetch from 'node-fetch';
+import path from 'path';
 
 // ─── GET /api/product-requests ───────────────────────────────────────────────
 // Super Admin: get all requests. Branch Admin: get only their own.
@@ -218,11 +220,8 @@ export const approveRequest = async (req: Request, res: Response) => {
 
     if (productErr) throw productErr;
 
-    // Only link to requesting branch (not all branches)
-    // Product will only appear in this branch's inventory
-
     // Register all angle images in product_images linked to the new product!
-    // Move images from requests/ folder to products/ folder
+    // Move images from requests/ folder to vision server local storage
     if (imagesToRegister.length > 0) {
       const movedImages: any[] = [];
 
@@ -233,34 +232,24 @@ export const approveRequest = async (req: Request, res: Response) => {
           if (!response.ok) continue;
           const buffer = Buffer.from(await response.arrayBuffer());
 
-          // Upload to products folder
-          const newPath = `products/${productData.id}/${img.angle}-${img.filename}`;
-          const uploadResult = await productService.uploadImageToStorage(buffer, newPath, 'image/jpeg');
-          if (!uploadResult.ok || !uploadResult.url) continue;
+          // Forward to vision server
+          const fwdResult = await productService.forwardMediaToVisionServer(
+            buffer,
+            img.filename,
+            img.angle === 'video' ? 'video/mp4' : 'image/jpeg',
+            aiClassName,
+            img.angle
+          );
+          if (!fwdResult.ok || !fwdResult.localPath) continue;
 
           movedImages.push({
             angle: img.angle,
             filename: img.filename,
-            storagePath: newPath,
-            imageUrl: uploadResult.url
+            storagePath: fwdResult.localPath,
+            imageUrl: fwdResult.localPath
           });
-
-          // Generate mirror (skip for video entries — can't mirror a video with sharp)
-          if (img.angle !== 'video') {
-            const mirroredBuffer = await productService.mirrorImageBuffer(buffer, 'image/jpeg');
-            const mirrorPath = `products/${productData.id}/${img.angle}-mirror-${img.filename}`;
-            const mirrorUpload = await productService.uploadImageToStorage(mirroredBuffer, mirrorPath, 'image/jpeg');
-            if (mirrorUpload.ok && mirrorUpload.url) {
-              movedImages.push({
-                angle: img.angle,
-                filename: `mirror-${img.filename}`,
-                storagePath: mirrorPath,
-                imageUrl: mirrorUpload.url
-              });
-            }
-          }
         } catch (err) {
-          console.warn(`[approveRequest] Failed to move/mirror ${img.angle}:`, err);
+          console.warn(`[approveRequest] Failed to move ${img.angle}:`, err);
         }
       }
 
@@ -270,9 +259,12 @@ export const approveRequest = async (req: Request, res: Response) => {
       }
 
       // Update product image_url with front image
-      const frontImg = movedImages.find(i => i.angle === 'front' && !i.filename.startsWith('mirror-'));
+      const frontImg = movedImages.find(i => i.angle === 'front');
       if (frontImg) {
-        await supabaseAdmin.from('products').update({ image_url: frontImg.imageUrl }).eq('id', productData.id);
+        const [, classAndFile] = frontImg.storagePath.split('local://');
+        const visionUrl = process.env.VISION_SERVER_URL || 'http://localhost:5002';
+        const thumbnailUrl = `${visionUrl}/dataset-image/${classAndFile}`;
+        await supabaseAdmin.from('products').update({ image_url: thumbnailUrl }).eq('id', productData.id);
       }
 
       // Delete original files from requests/ folder
@@ -282,7 +274,7 @@ export const approveRequest = async (req: Request, res: Response) => {
         console.log(`[approveRequest] 🗑️ Deleted ${oldPaths.length} files from requests/ folder`);
       }
 
-      console.log(`[approveRequest] ✅ ${movedImages.length} images moved to products/${productData.id}/`);
+      console.log(`[approveRequest] ✅ ${movedImages.length} images moved to local dataset for class '${aiClassName}'`);
     }
 
     // Trigger vision server sync

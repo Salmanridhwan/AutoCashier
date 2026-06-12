@@ -1,8 +1,14 @@
 import os
 import io
 import sys
+
+# Ensure sibling imports work by adding script directory to sys.path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import re
 import json
 import gc
+import zipfile
 import hashlib
 import shutil
 import threading
@@ -10,6 +16,8 @@ import subprocess
 import time
 import urllib.request
 import traceback
+import tempfile
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
@@ -222,6 +230,181 @@ def refresh_cache():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Local Dataset Media Management
+# Foto & video produk disimpan langsung ke lokal, bukan ke Supabase Storage.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SAFE_NAME_RE = re.compile(r'^[a-zA-Z0-9_\-]+$')
+
+
+def _safe_class_dir(ai_class_name: str) -> str | None:
+    """Return absolute path to dataset class dir, or None if name is unsafe."""
+    if not _SAFE_NAME_RE.match(ai_class_name):
+        return None
+    base = os.path.abspath(os.path.join("dataset", "products"))
+    target = os.path.abspath(os.path.join(base, ai_class_name))
+    if not target.startswith(base + os.sep) and target != base:
+        return None
+    return target
+
+
+@app.post("/upload-product-media")
+async def upload_product_media(
+    background_tasks: BackgroundTasks,
+    ai_class_name: str = Form(...),
+    angle: str = Form(...),
+    file: UploadFile = File(...),
+):
+    """
+    POST /upload-product-media
+    Simpan foto atau video produk langsung ke folder lokal dataset.
+    - Foto: disimpan sebagai JPG ke dataset/products/{ai_class_name}/{angle}_{id}.jpg
+    - Video: diekstrak frame per frame ke dataset/products/{ai_class_name}/vid_{id}_{n}.jpg
+    Returns: { success, files_saved, local_paths }
+    """
+    import re as _re
+    import uuid
+
+    class_dir = _safe_class_dir(ai_class_name)
+    if not class_dir:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": f"Invalid ai_class_name: '{ai_class_name}'"}
+        )
+
+    os.makedirs(class_dir, exist_ok=True)
+
+    content_type = file.content_type or ""
+    filename = file.filename or "upload"
+    unique_id = uuid.uuid4().hex[:10]
+    saved_files: list[str] = []
+
+    is_video = (
+        content_type.startswith("video/")
+        or any(filename.lower().endswith(ext) for ext in (".mp4", ".mov", ".webm", ".avi", ".mkv"))
+        or angle == "video"
+    )
+
+    raw_bytes = await file.read()
+
+    if is_video:
+        # Write video to temp file → extract frames → delete temp
+        import tempfile
+        import cv2
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(raw_bytes)
+        tmp.close()
+        try:
+            cap = cv2.VideoCapture(tmp.name)
+            fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+            every_sec = 0.5
+            step = max(1, int(fps * every_sec))
+            idx = 0
+            frame_idx = 0
+            while True:
+                ok, frame = cap.read()
+                if not ok:
+                    break
+                if idx % step == 0:
+                    out_name = f"vid_{unique_id}_{frame_idx}.jpg"
+                    out_path = os.path.join(class_dir, out_name)
+                    cv2.imwrite(out_path, frame)
+                    saved_files.append(out_name)
+                    frame_idx += 1
+                idx += 1
+            cap.release()
+        finally:
+            try:
+                os.remove(tmp.name)
+            except Exception:
+                pass
+    else:
+        # Save photo directly (convert to JPG via PIL for consistency)
+        from io import BytesIO
+        img = Image.open(BytesIO(raw_bytes)).convert("RGB")
+        safe_angle = _re.sub(r'[^a-zA-Z0-9_\-]', '_', angle)
+        out_name = f"{safe_angle}_{unique_id}.jpg"
+        out_path = os.path.join(class_dir, out_name)
+        img.save(out_path, "JPEG", quality=90)
+        saved_files.append(out_name)
+
+        # Also save horizontally mirrored version for augmentation
+        mirror_name = f"{safe_angle}_mirror_{unique_id}.jpg"
+        mirror_path = os.path.join(class_dir, mirror_name)
+        img_mirror = img.transpose(Image.FLIP_LEFT_RIGHT)
+        img_mirror.save(mirror_path, "JPEG", quality=90)
+        saved_files.append(mirror_name)
+
+    local_paths = [f"local://{ai_class_name}/{f}" for f in saved_files]
+    return {
+        "success": True,
+        "files_saved": len(saved_files),
+        "local_paths": local_paths,
+        "ai_class_name": ai_class_name,
+        "angle": angle,
+    }
+
+
+from fastapi.responses import FileResponse
+
+
+@app.get("/dataset-image/{ai_class_name}/{filename}")
+def serve_dataset_image(ai_class_name: str, filename: str):
+    """
+    GET /dataset-image/{ai_class_name}/{filename}
+    Menyajikan foto dari folder lokal dataset agar bisa ditampilkan di browser admin.
+    """
+    class_dir = _safe_class_dir(ai_class_name)
+    if not class_dir:
+        return JSONResponse(status_code=400, content={"error": "Invalid class name"})
+
+    file_path = os.path.join(class_dir, filename)
+    abs_path = os.path.abspath(file_path)
+    # Safety: ensure file is inside the class dir
+    if not abs_path.startswith(os.path.abspath(class_dir)):
+        return JSONResponse(status_code=403, content={"error": "Forbidden"})
+
+    if not os.path.isfile(abs_path):
+        return JSONResponse(status_code=404, content={"error": "File not found"})
+
+    return FileResponse(abs_path, media_type="image/jpeg")
+
+
+@app.delete("/delete-product-media")
+def delete_product_media(ai_class_name: str):
+    """
+    DELETE /delete-product-media?ai_class_name=xxx
+    Hapus seluruh folder dataset lokal untuk satu produk.
+    Dipanggil saat produk dihapus dari admin panel.
+    """
+    class_dir = _safe_class_dir(ai_class_name)
+    if not class_dir:
+        return JSONResponse(status_code=400, content={"success": False, "error": "Invalid class name"})
+
+    if not os.path.isdir(class_dir):
+        return {"success": True, "message": "Folder not found (already deleted or never created)"}
+
+    import shutil as _shutil
+    _shutil.rmtree(class_dir, ignore_errors=True)
+    return {"success": True, "deleted_folder": class_dir}
+
+
+@app.get("/list-product-media/{ai_class_name}")
+def list_product_media(ai_class_name: str):
+    """
+    GET /list-product-media/{ai_class_name}
+    List semua file foto dalam folder dataset lokal untuk satu produk.
+    """
+    class_dir = _safe_class_dir(ai_class_name)
+    if not class_dir or not os.path.isdir(class_dir):
+        return {"success": True, "files": [], "count": 0}
+
+    files = [f for f in os.listdir(class_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))]
+    return {"success": True, "files": files, "count": len(files), "ai_class_name": ai_class_name}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Admin-triggered dataset build + training (runs locally on this GPU machine)
 # ─────────────────────────────────────────────────────────────────────────────
 DATASET_DIR = os.path.join("dataset", "products")
@@ -245,21 +428,20 @@ def _blog(msg):
         del BUILD_LOG[: len(BUILD_LOG) - 500]
 
 
-def _extract_video_frames(url, out_dir, prefix="vid", every_sec=0.5, max_frames=40):
-    """Download a product video and sample frames into out_dir for training."""
+def _extract_video_frames(url, out_dir, prefix="vid", every_sec=0.5):
+    """Stream a product video directly from URL and save frames as JPG photos.
+    No video file is saved locally — frames are extracted on-the-fly.
+    Falls back to tempfile download if direct URL streaming is not supported.
+    """
     import cv2
     import tempfile
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-    tmp.close()
-    try:
-        urllib.request.urlretrieve(url, tmp.name)
-        cap = cv2.VideoCapture(tmp.name)
+    def _do_extract(cap):
         fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
         step = max(1, int(fps * every_sec))
         saved = 0
         idx = 0
-        while saved < max_frames:
+        while True:
             ok, frame = cap.read()
             if not ok:
                 break
@@ -269,6 +451,22 @@ def _extract_video_frames(url, out_dir, prefix="vid", every_sec=0.5, max_frames=
             idx += 1
         cap.release()
         return saved
+
+    # Try streaming directly from URL (no local video file saved)
+    cap = cv2.VideoCapture(url)
+    if cap.isOpened():
+        try:
+            return _do_extract(cap)
+        except Exception:
+            pass
+
+    # Fallback: download to a temp file, extract, then delete immediately
+    tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+    tmp.close()
+    try:
+        urllib.request.urlretrieve(url, tmp.name)
+        cap = cv2.VideoCapture(tmp.name)
+        return _do_extract(cap)
     finally:
         try:
             os.remove(tmp.name)
@@ -395,123 +593,45 @@ def build_dataset_from_supabase(download_workers=6):
 
 
 def sync_dataset_from_supabase(download_workers=6):
-    """Incrementally synchronize raw media without invalidating unchanged crop cache."""
-    if not product_repo or not product_repo.client:
-        raise RuntimeError("Supabase client not available")
-
+    """Incrementally synchronize raw media from local filesystem without querying Supabase."""
     started_at = time.perf_counter()
-    download_workers = max(1, min(int(download_workers), 12))
-    client = product_repo.client
-    products = client.table("products").select("id, name, ai_class_name").eq("ai_enabled", True).execute().data
-    products = [product for product in products if product.get("ai_class_name")]
     os.makedirs(DATASET_DIR, exist_ok=True)
 
-    valid_classes = {product["ai_class_name"].strip() for product in products}
-    for directory in os.listdir(DATASET_DIR):
-        full_path = os.path.join(DATASET_DIR, directory)
-        if os.path.isdir(full_path) and directory != "background" and directory not in valid_classes:
-            shutil.rmtree(full_path, ignore_errors=True)
-            _blog(f"Hapus kelas terhapus: {directory}")
-
-    product_ids = [product["id"] for product in products]
-    try:
-        all_images = (
-            client.table("product_images")
-            .select("product_id, image_url, angle")
-            .in_("product_id", product_ids)
-            .execute()
-            .data
-        ) if product_ids else []
-    except Exception as exc:
-        _blog(f"Bulk media query gagal, fallback per produk: {exc}")
-        all_images = []
-        for product in products:
-            rows = (
-                client.table("product_images")
-                .select("product_id, image_url, angle")
-                .eq("product_id", product["id"])
-                .execute()
-                .data
-            )
-            all_images.extend(rows)
-
-    images_by_product = {}
-    for image in all_images:
-        images_by_product.setdefault(image.get("product_id"), []).append(image)
-
-    desired_files = {}
-    media_tasks = []
-    for product in products:
-        class_name = product["ai_class_name"].strip()
-        class_dir = os.path.join(DATASET_DIR, class_name)
-        os.makedirs(class_dir, exist_ok=True)
-        desired_files[class_name] = set()
-        for image in images_by_product.get(product["id"], []):
-            url = image.get("image_url")
-            if not url:
-                continue
-            angle = image.get("angle") or "img"
-            is_video = angle == "video" or url.split("?")[0].lower().endswith((".mp4", ".mov", ".webm", ".avi", ".mkv"))
-            media_tasks.append((product, class_name, class_dir, url, angle, is_video))
-
-    source_stats = {"total": len(media_tasks), "downloaded": 0, "cached": 0, "failed": 0}
-    _blog(f"Sinkronisasi {len(media_tasks)} sumber media dengan {download_workers} worker...")
-    with ThreadPoolExecutor(max_workers=download_workers) as executor:
-        futures = {
-            executor.submit(_materialize_product_media, url, class_dir, angle, is_video): (product, class_name, url)
-            for product, class_name, class_dir, url, angle, is_video in media_tasks
-        }
-        for future in as_completed(futures):
-            product, class_name, url = futures[future]
-            try:
-                result = future.result()
-                desired_files[class_name].update(result["files"])
-                source_stats["cached" if result["cached"] else "downloaded"] += 1
-            except Exception as exc:
-                source_stats["failed"] += 1
-                _blog(f"Gagal memproses media {product['name']} ({url}): {exc}")
-
     counts = {}
-    for product in products:
-        class_name = product["ai_class_name"].strip()
-        class_dir = os.path.join(DATASET_DIR, class_name)
-        valid_names = desired_files[class_name]
-        for filename in os.listdir(class_dir):
-            path = os.path.join(class_dir, filename)
-            if os.path.isfile(path) and filename not in valid_names:
-                os.remove(path)
-        counts[class_name] = len(valid_names)
-        _blog(f"{product['name']} -> {class_name}: {counts[class_name]} foto")
+    valid_exts = (".jpg", ".jpeg", ".png")
+    
+    # Scan the local DATASET_DIR (dataset/products)
+    for directory in sorted(os.listdir(DATASET_DIR)):
+        full_path = os.path.join(DATASET_DIR, directory)
+        if os.path.isdir(full_path):
+            # count valid images
+            files = [
+                f for f in os.listdir(full_path)
+                if f.lower().endswith(valid_exts) and os.path.isfile(os.path.join(full_path, f))
+            ]
+            counts[directory] = len(files)
+            _blog(f"{directory} -> {directory}: {len(files)} foto")
 
+    # If background doesn't exist, make sure to create the folder
     bg_dir = os.path.join(DATASET_DIR, "background")
     os.makedirs(bg_dir, exist_ok=True)
-    try:
-        bucket = client.storage.from_("product-images")
-        for file_entry in bucket.list("background"):
-            name = file_entry.get("name")
-            if not name or name == ".emptyFolderPlaceholder":
-                continue
-            url = bucket.get_public_url(f"background/{name}")
-            low_name = name.lower()
-            if low_name.endswith((".mp4", ".mov", ".webm", ".avi", ".mkv")):
-                prefix = f"bgvid_{os.path.splitext(name)[0]}"
-                if not any(filename.startswith(f"{prefix}_") for filename in os.listdir(bg_dir)):
-                    _extract_video_frames(url, bg_dir, prefix=prefix)
-            else:
-                destination = os.path.join(bg_dir, f"bg_{name}")
-                if not os.path.exists(destination):
-                    urllib.request.urlretrieve(url, destination)
-    except Exception as exc:
-        _blog(f"Background dari storage dilewati: {exc}")
+    if "background" not in counts:
+        counts["background"] = len([
+            f for f in os.listdir(bg_dir)
+            if f.lower().endswith(valid_exts) and os.path.isfile(os.path.join(bg_dir, f))
+        ])
+        _blog(f"background: {counts['background']} frame")
 
-    counts["background"] = sum(
-        1 for filename in os.listdir(bg_dir)
-        if not filename.startswith(".") and os.path.isfile(os.path.join(bg_dir, filename))
-    )
-    source_stats["duration_seconds"] = round(time.perf_counter() - started_at, 3)
-    _blog(f"background: {counts['background']} frame")
+    source_stats = {
+        "total": sum(counts.values()),
+        "downloaded": 0,
+        "cached": sum(counts.values()),
+        "failed": 0,
+        "duration_seconds": round(time.perf_counter() - started_at, 3)
+    }
+
     _blog(
-        "Sinkronisasi raw selesai: "
+        "Sinkronisasi lokal selesai: "
         f"download={source_stats['downloaded']}, cache={source_stats['cached']}, "
         f"gagal={source_stats['failed']}, durasi={source_stats['duration_seconds']:.1f}s"
     )
@@ -523,6 +643,152 @@ class BuildDatasetRequest(BaseModel):
     download_workers: int = 6
     gpu_batch_size: int = 8
     gpu_half: bool = True
+
+
+# ---------------------------------------------------------------------------
+# Cloud Model Sync helpers
+# ---------------------------------------------------------------------------
+
+MODEL_CLOUD_BUCKET = "trained-models"
+MODEL_CLOUD_FILENAME = "model_latest.zip"
+MODEL_ESSENTIAL_FILES = (
+    "model.safetensors",
+    "config.json",
+    "preprocessor_config.json",
+    "calibration.json",
+    "class_mapping.json",
+    "metrics.json",
+)
+SYNC_MODEL_STATUS = {"state": "idle", "message": "", "detail": {}}
+_sync_model_lock = threading.Lock()
+
+
+def _upload_model_to_cloud():
+    """Zip essential model files and upload to Supabase Storage after training."""
+    if not product_repo or not product_repo.client:
+        print("[CLOUD-SYNC] Supabase client not available — skipping cloud upload.")
+        return False
+
+    try:
+        # Build zip in memory
+        tmp_zip = os.path.join("models", "_cloud_upload.zip")
+        metrics_data = {}
+        metrics_path = os.path.join(MODEL_DIR, "metrics.json")
+        if os.path.isfile(metrics_path):
+            try:
+                with open(metrics_path, encoding="utf-8") as f:
+                    metrics_data = json.load(f)
+            except Exception:
+                pass
+
+        with zipfile.ZipFile(tmp_zip, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+            for fname in MODEL_ESSENTIAL_FILES:
+                src = os.path.join(MODEL_DIR, fname)
+                if os.path.isfile(src):
+                    zf.write(src, fname)
+            # Embed metadata
+            metadata = {
+                "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                "accuracy": metrics_data.get("accuracy"),
+                "num_classes": metrics_data.get("num_classes"),
+                "labels": metrics_data.get("labels"),
+                "source_machine": os.environ.get("COMPUTERNAME", "unknown"),
+            }
+            zf.writestr("cloud_metadata.json", json.dumps(metadata, indent=2))
+
+        # Upload to Supabase Storage
+        bucket = product_repo.client.storage.from_(MODEL_CLOUD_BUCKET)
+        with open(tmp_zip, "rb") as f:
+            file_bytes = f.read()
+
+        # Remove existing file first (upsert)
+        try:
+            bucket.remove([MODEL_CLOUD_FILENAME])
+        except Exception:
+            pass
+        bucket.upload(MODEL_CLOUD_FILENAME, file_bytes, file_options={"content-type": "application/zip"})
+
+        file_size_mb = len(file_bytes) / (1024 * 1024)
+        print(f"[CLOUD-SYNC] ✅ Model uploaded to Supabase Storage: {MODEL_CLOUD_BUCKET}/{MODEL_CLOUD_FILENAME} ({file_size_mb:.1f} MB)")
+
+        # Cleanup
+        try:
+            os.remove(tmp_zip)
+        except Exception:
+            pass
+        return True
+    except Exception as e:
+        print(f"[CLOUD-SYNC] ❌ Failed to upload model to cloud: {e}")
+        traceback.print_exc()
+        try:
+            os.remove(os.path.join("models", "_cloud_upload.zip"))
+        except Exception:
+            pass
+        return False
+
+
+def _download_model_from_cloud():
+    """Download model zip from Supabase Storage, extract, and reload."""
+    if not product_repo or not product_repo.client:
+        raise RuntimeError("Supabase client not available.")
+
+    bucket = product_repo.client.storage.from_(MODEL_CLOUD_BUCKET)
+    # Download the zip
+    file_bytes = bucket.download(MODEL_CLOUD_FILENAME)
+    if not file_bytes:
+        raise FileNotFoundError("No model found in cloud storage.")
+
+    # Write to temp file and extract
+    tmp_zip = os.path.join("models", "_cloud_download.zip")
+    try:
+        with open(tmp_zip, "wb") as f:
+            f.write(file_bytes)
+
+        # Verify it's a valid zip
+        with zipfile.ZipFile(tmp_zip, "r") as zf:
+            names = zf.namelist()
+            if "config.json" not in names or "model.safetensors" not in names:
+                raise ValueError("Downloaded zip is missing essential model files.")
+
+            # Extract to MODEL_DIR
+            os.makedirs(MODEL_DIR, exist_ok=True)
+            for name in names:
+                zf.extract(name, MODEL_DIR)
+
+        # Read cloud metadata
+        metadata = {}
+        cloud_meta_path = os.path.join(MODEL_DIR, "cloud_metadata.json")
+        if os.path.isfile(cloud_meta_path):
+            with open(cloud_meta_path, encoding="utf-8") as f:
+                metadata = json.load(f)
+
+        print(f"[CLOUD-SYNC] ✅ Model downloaded and extracted to {MODEL_DIR}")
+        return metadata
+    finally:
+        try:
+            os.remove(tmp_zip)
+        except Exception:
+            pass
+
+
+def _get_cloud_model_metadata():
+    """Fetch metadata from the cloud model zip without downloading the full file."""
+    if not product_repo or not product_repo.client:
+        return None
+    try:
+        bucket = product_repo.client.storage.from_(MODEL_CLOUD_BUCKET)
+        files = bucket.list()
+        for f in files:
+            if f.get("name") == MODEL_CLOUD_FILENAME:
+                return {
+                    "exists": True,
+                    "file_name": MODEL_CLOUD_FILENAME,
+                    "updated_at": f.get("updated_at"),
+                    "size_bytes": f.get("metadata", {}).get("size"),
+                }
+        return {"exists": False}
+    except Exception as e:
+        return {"exists": False, "error": str(e)}
 
 
 def _build_worker(params: dict):
@@ -640,7 +906,7 @@ class TrainRequest(BaseModel):
     optim: str = "adamw_torch_fused"
     auto_batch_size: bool = True
     early_stopping_patience: int = 5
-    video_aug_repeats: int = 1
+    video_aug_repeats: int = 3
     use_classifier_cache: bool = True
     require_cuda: bool = True
 
@@ -662,12 +928,16 @@ def _train_worker(params: dict):
         if os.path.isdir(tmp_dir):
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
+        base_model = "microsoft/resnet-50"
+        if os.path.exists(os.path.join(MODEL_DIR, "config.json")):
+            base_model = MODEL_DIR
+
         classifier_data_dir = os.path.join("dataset", "products_classifier")
         classifier_manifest = os.path.join(classifier_data_dir, "_crop_manifest.json")
         cmd = [
             sys.executable, "train_resnet50_product_classifier.py",
             "--output_dir", tmp_dir,
-            "--base_model", "microsoft/resnet-50",
+            "--base_model", base_model,
             "--epochs", str(params["epochs"]),
             "--batch_size", str(params["batch_size"]),
             "--eval_batch_size", str(params["eval_batch_size"]),
@@ -716,6 +986,30 @@ def _train_worker(params: dict):
                 }
                 shutil.rmtree(tmp_dir, ignore_errors=True)
                 return
+
+            # Append the list of wrong predictions to the training log
+            try:
+                if os.path.exists(evaluation_output):
+                    with open(evaluation_output, encoding="utf-8") as file:
+                        evaluation_report = json.load(file)
+                    errors_list = evaluation_report.get("errors", [])
+                    if errors_list:
+                        with open("train_admin_log.txt", "a", encoding="utf-8") as logf:
+                            logf.write("\n" + "="*80 + "\n")
+                            logf.write(f"[EVAL] DAFTAR SALAH PREDIKSI ({len(errors_list)} sampel):\n")
+                            logf.write("Di bawah ini adalah daftar berkas gambar dari validation set yang gagal ditebak oleh model:\n")
+                            for idx, err in enumerate(errors_list[:30], 1):
+                                logf.write(
+                                    f"{idx}. File: {err['filename']} | "
+                                    f"True Class: '{err['expected_class']}' | "
+                                    f"Predicted: '{err['final_prediction']}' | "
+                                    f"Decision: {err['decision']} ({err['reason']})\n"
+                                )
+                            if len(errors_list) > 30:
+                                logf.write(f"... dan {len(errors_list) - 30} kesalahan lainnya.\n")
+                            logf.write("="*80 + "\n")
+            except Exception as e:
+                print(f"[TRAIN-EVAL] Failed to write error log to train_admin_log.txt: {e}")
 
             metrics = {}
             mpath = os.path.join(tmp_dir, "metrics.json")
@@ -776,10 +1070,18 @@ def _train_worker(params: dict):
                 if os.path.exists(src):
                     shutil.copyfile(src, os.path.join(MODEL_DIR, fname))
 
+            # Upload model to cloud storage for other laptops
+            cloud_uploaded = False
+            try:
+                cloud_uploaded = _upload_model_to_cloud()
+            except Exception as cloud_err:
+                print(f"[TRAIN] Cloud upload failed (non-fatal): {cloud_err}")
+
             TRAIN_STATUS = {
                 "state": "done",
-                "message": "Training and end-to-end evaluation complete. Model updated.",
-                "detail": metrics,
+                "message": "Training and end-to-end evaluation complete. Model updated."
+                           + (" Cloud sync: uploaded." if cloud_uploaded else " Cloud sync: skipped."),
+                "detail": {**metrics, "cloud_uploaded": cloud_uploaded},
             }
 
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -893,6 +1195,95 @@ def evaluation_report():
         return JSONResponse(status_code=404, content={"success": False, "message": "No evaluation report for the active model."})
     with open(path, encoding="utf-8") as file:
         return json.load(file)
+
+
+# ---------------------------------------------------------------------------
+# Cloud Model Sync endpoints
+# ---------------------------------------------------------------------------
+
+
+def _sync_model_worker():
+    global SYNC_MODEL_STATUS
+    try:
+        SYNC_MODEL_STATUS = {
+            "state": "running",
+            "message": "Downloading model from cloud...",
+            "detail": {},
+        }
+        metadata = _download_model_from_cloud()
+
+        SYNC_MODEL_STATUS = {
+            "state": "running",
+            "message": "Reloading model...",
+            "detail": metadata,
+        }
+        load_models()
+        if product_repo:
+            try:
+                product_repo.refresh_cache()
+            except Exception:
+                pass
+
+        SYNC_MODEL_STATUS = {
+            "state": "done",
+            "message": "Model synced from cloud and reloaded successfully.",
+            "detail": metadata,
+        }
+    except Exception as e:
+        traceback.print_exc()
+        SYNC_MODEL_STATUS = {"state": "error", "message": str(e), "detail": {}}
+    finally:
+        _sync_model_lock.release()
+
+
+@app.post("/sync-model")
+def sync_model():
+    if _train_lock.locked():
+        return JSONResponse(status_code=409, content={"success": False, "message": "Training is running. Cannot sync model now."})
+    if not _sync_model_lock.acquire(blocking=False):
+        return JSONResponse(status_code=409, content={"success": False, "message": "Model sync already in progress."})
+    threading.Thread(target=_sync_model_worker, daemon=True).start()
+    return {"success": True, "message": "Model sync started."}
+
+
+@app.get("/sync-model-status")
+def sync_model_status():
+    return SYNC_MODEL_STATUS
+
+
+@app.get("/model-version")
+def model_version():
+    # Local model info
+    local_info = {"exists": False}
+    metrics_path = os.path.join(MODEL_DIR, "metrics.json")
+    if os.path.isfile(metrics_path):
+        try:
+            with open(metrics_path, encoding="utf-8") as f:
+                metrics = json.load(f)
+            local_info = {
+                "exists": True,
+                "accuracy": metrics.get("accuracy"),
+                "num_classes": metrics.get("num_classes"),
+                "labels": metrics.get("labels"),
+                "train_runtime": metrics.get("train_runtime"),
+            }
+            # Check for cloud metadata
+            cloud_meta_path = os.path.join(MODEL_DIR, "cloud_metadata.json")
+            if os.path.isfile(cloud_meta_path):
+                with open(cloud_meta_path, encoding="utf-8") as f:
+                    cloud_meta = json.load(f)
+                local_info["synced_at"] = cloud_meta.get("uploaded_at")
+                local_info["source_machine"] = cloud_meta.get("source_machine")
+        except Exception:
+            pass
+
+    # Cloud model info
+    cloud_info = _get_cloud_model_metadata()
+
+    return {
+        "local": local_info,
+        "cloud": cloud_info,
+    }
 
 
 def ocr_cross_check(crop_image):

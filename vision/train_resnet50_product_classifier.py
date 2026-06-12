@@ -112,9 +112,10 @@ def split_dataset_by_source(file_paths, labels, id2label, val_ratio, seed):
         video_groups = [group for group in group_names if source_types[group] == "video"]
 
         if video_groups:
-            # A complete unseen recording is the strongest validation signal for live-camera use.
-            rng.shuffle(video_groups)
-            chosen_val_groups = {video_groups[0]}
+            # Sort video groups by number of frames in descending order (longest first)
+            sorted_video_groups = sorted(video_groups, key=lambda g: len(class_groups[g]), reverse=True)
+            # Choose the shortest video (the last one) for validation, leaving the longer one(s) for training
+            chosen_val_groups = {sorted_video_groups[-1]}
         else:
             shuffled_groups = list(group_names)
             rng.shuffle(shuffled_groups)
@@ -310,7 +311,7 @@ def main():
     parser.add_argument("--require_cuda", action="store_true", help="Fail fast if CUDA is not available")
     parser.add_argument("--val_ratio", type=float, default=0.2, help="Validation ratio used when a class has no video source")
     parser.add_argument("--split_seed", type=int, default=42, help="Deterministic capture-source split seed")
-    parser.add_argument("--video_aug_repeats", type=int, default=1, help="Extra virtual train samples per video frame; validation is never augmented")
+    parser.add_argument("--video_aug_repeats", type=int, default=3, help="Extra virtual train samples per video frame; validation is never augmented")
     parser.add_argument("--split_only", action="store_true", help="Validate and print the source-group split, then exit")
     parser.add_argument("--quick_test", action="store_true", help="Run a quick training test (1 epoch, few steps)")
     args = parser.parse_args()
@@ -405,6 +406,65 @@ def main():
             f"{stats['train_source_groups']} sources, val={stats['val_images']} images/"
             f"{stats['val_source_groups']} sources, held_out={stats['held_out_sources']}"
         )
+
+    # Load previous evaluation report to perform active learning (promoting previous misclassifications to training set)
+    evaluation_report_path = None
+    for folder in [args.base_model, args.output_dir]:
+        p = os.path.join(folder, "evaluation_report.json")
+        if os.path.exists(p):
+            evaluation_report_path = p
+            break
+
+    if evaluation_report_path:
+        try:
+            with open(evaluation_report_path, encoding="utf-8") as file:
+                report = json.load(file)
+            errors = report.get("errors", [])
+            error_files = set()
+            for err in errors:
+                expected_class = err.get("expected_class")
+                filename = err.get("filename")
+                if expected_class and filename:
+                    error_files.add((expected_class, filename))
+
+            if error_files:
+                new_val_paths = []
+                new_val_labels = []
+                promoted_count_by_class = defaultdict(int)
+                promoted_count = 0
+
+                for path, label in zip(val_paths, val_labels):
+                    class_name = id2label[label]
+                    filename = os.path.basename(path)
+                    if (class_name, filename) in error_files:
+                        train_paths.append(path)
+                        train_labels.append(label)
+                        promoted_count += 1
+                        promoted_count_by_class[class_name] += 1
+                    else:
+                        new_val_paths.append(path)
+                        new_val_labels.append(label)
+
+                val_paths = new_val_paths
+                val_labels = new_val_labels
+
+                if promoted_count > 0:
+                    print(
+                        f"Active Learning: Promoted {promoted_count} misclassified validation images "
+                        f"to the training set: {dict(promoted_count_by_class)}"
+                    )
+                    # Update split_manifest stats to reflect the promotion
+                    split_manifest["train_images"] = len(train_paths)
+                    split_manifest["val_images"] = len(val_paths)
+                    split_manifest["actual_val_ratio"] = len(val_paths) / (len(train_paths) + len(val_paths))
+                    for class_name, count in promoted_count_by_class.items():
+                        if class_name in split_manifest["per_class"]:
+                            split_manifest["per_class"][class_name]["train_images"] += count
+                            split_manifest["per_class"][class_name]["val_images"] -= count
+                    split_manifest["active_learning_promoted_images"] = promoted_count
+                    split_manifest["active_learning_promoted_by_class"] = dict(promoted_count_by_class)
+        except Exception as e:
+            print(f"Active Learning: Could not load previous errors for active learning: {e}")
 
     if args.split_only:
         print("Split-only validation finished successfully.")

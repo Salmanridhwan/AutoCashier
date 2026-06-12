@@ -9,24 +9,36 @@ import { generateOcrKeywords } from './product-ai.utils.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const VISION_SERVER_URL = process.env.VISION_SERVER_URL || 'http://localhost:5002';
+
 async function deleteLocalProductDataset(aiClassName?: string | null): Promise<boolean> {
   const className = String(aiClassName || '').trim();
   if (!className || className === 'background' || !/^[a-zA-Z0-9_-]+$/.test(className)) {
     return false;
   }
 
-  const projectRoot = path.resolve(__dirname, '../../../..');
-  const datasetRoot = path.resolve(projectRoot, 'vision', 'dataset', 'products');
-  const target = path.resolve(datasetRoot, className);
-  const datasetRootWithSep = datasetRoot.endsWith(path.sep) ? datasetRoot : `${datasetRoot}${path.sep}`;
-
-  if (target === datasetRoot || !target.startsWith(datasetRootWithSep)) {
-    console.warn(`[deleteProduct] Refusing to delete unsafe dataset path: ${target}`);
-    return false;
+  // Also call the vision server to delete its local dataset folder
+  try {
+    await fetch(`${VISION_SERVER_URL}/delete-product-media?ai_class_name=${encodeURIComponent(className)}`, { method: 'DELETE' });
+    console.log(`[deleteProduct] Requested vision server to delete dataset for: ${className}`);
+  } catch (e) {
+    console.warn('[deleteProduct] Could not reach vision server for dataset deletion:', e);
   }
 
-  await fs.rm(target, { recursive: true, force: true });
-  console.log(`[deleteProduct] Removed local dataset folder: ${target}`);
+  // Also delete via local filesystem path (redundant but safe)
+  try {
+    const projectRoot = path.resolve(__dirname, '../../../..');
+    const datasetRoot = path.resolve(projectRoot, 'vision', 'dataset', 'products');
+    const target = path.resolve(datasetRoot, className);
+    const datasetRootWithSep = datasetRoot.endsWith(path.sep) ? datasetRoot : `${datasetRoot}${path.sep}`;
+    if (target !== datasetRoot && target.startsWith(datasetRootWithSep)) {
+      await fs.rm(target, { recursive: true, force: true });
+      console.log(`[deleteProduct] Removed local dataset folder: ${target}`);
+    }
+  } catch (e) {
+    console.warn('[deleteProduct] Local dataset folder deletion failed:', e);
+  }
+
   return true;
 }
 
@@ -39,11 +51,11 @@ export async function listProducts(req: Request, res: Response) {
 export async function searchProduct(req: Request, res: Response) {
   const { label } = req.query;
   if (!label) return res.status(400).json({ status: 'error', error: 'Label is required' });
-  
+
   const result = await productService.searchProductByLabel(label as string);
   if (!result.ok) return res.status(500).json({ status: 'error', error: result.error });
   if (!result.data) return res.status(404).json({ status: 'error', error: 'Product not found' });
-  
+
   return res.json({ status: 'success', data: result.data });
 }
 
@@ -67,12 +79,10 @@ export async function createProduct(req: Request, res: Response) {
     const finalSku = sku || `PROD-${name.substring(0, 3).toUpperCase()}-${uuidv4().substring(0, 8).toUpperCase()}`;
 
     // Derive AI fields so new products are usable by the scanner/training right away.
-    // ai_class_name = dataset folder name; keywords include phrases, tokens, and
-    // conservative spelling variants used by the OCR verifier.
     const aiClassName = (ai_label || name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
     const ocrKeywords = generateOcrKeywords(name, aiClassName);
 
-    // First, create the product in DB (without image_url yet; we need product ID for storage path)
+    // First, create the product in DB (without image_url yet)
     const result = await productService.createProduct({
       sku: finalSku,
       name,
@@ -100,7 +110,7 @@ export async function createProduct(req: Request, res: Response) {
       throw new Error('Product ID not found after creation.');
     }
 
-    // Upload all angle images to Supabase Storage (4 main angles)
+    // Forward all angle images directly to the vision server (stored locally, not in Supabase Storage)
     const ANGLE_FIELDS = [
       { field: 'imageFront', angle: 'front' },
       { field: 'imageBack',  angle: 'back'  },
@@ -109,62 +119,48 @@ export async function createProduct(req: Request, res: Response) {
     ];
 
     const imageEntries: { angle: string; filename: string; storagePath: string; imageUrl: string }[] = [];
-    let frontPublicUrl: string | null = null;
+    let frontLocalPath: string | null = null;
 
     for (const { field, angle } of ANGLE_FIELDS) {
       const file = files?.[field]?.[0];
       if (!file) continue;
 
-      // ── Upload original image ──
-      const storagePath = `products/${createdProduct.id}/${angle}-${file.originalname}`;
-      const uploadResult = await productService.uploadImageToStorage(file.buffer, storagePath, file.mimetype);
+      // Forward photo to vision server — it saves the file and its mirror to disk
+      const fwdResult = await productService.forwardMediaToVisionServer(
+        file.buffer, file.originalname, file.mimetype, aiClassName, angle
+      );
 
-      if (!uploadResult.ok || !uploadResult.url) {
-        console.warn(`[createProduct] ⚠️  Failed to upload ${angle} image:`, uploadResult.error);
+      if (!fwdResult.ok || !fwdResult.localPath) {
+        console.warn(`[createProduct] ⚠️  Failed to forward ${angle} to vision server:`, fwdResult.error);
         continue;
       }
 
-      imageEntries.push({ angle, filename: file.originalname, storagePath, imageUrl: uploadResult.url });
-
-      if (angle === 'front') {
-        frontPublicUrl = uploadResult.url;
-      }
-
-      // ── Generate & upload mirrored version ──
-      try {
-        const mirroredBuffer = await productService.mirrorImageBuffer(file.buffer, file.mimetype);
-        const mirrorFilename = `mirror-${file.originalname}`;
-        const mirrorStoragePath = `products/${createdProduct.id}/${angle}-mirror-${file.originalname}`;
-
-        const mirrorUpload = await productService.uploadImageToStorage(mirroredBuffer, mirrorStoragePath, file.mimetype);
-
-        if (mirrorUpload.ok && mirrorUpload.url) {
-          // Use same angle value (passes DB check constraint) but different filename/path
-          imageEntries.push({ angle, filename: mirrorFilename, storagePath: mirrorStoragePath, imageUrl: mirrorUpload.url });
-          console.log(`[createProduct] 🪞 Mirror created for ${angle}`);
-        }
-      } catch (mirrorErr) {
-        console.warn(`[createProduct] ⚠️  Failed to create mirror for ${angle}:`, mirrorErr);
-      }
+      // Store local:// pseudo-path for tracking in the database
+      imageEntries.push({ angle, filename: file.originalname, storagePath: fwdResult.localPath, imageUrl: fwdResult.localPath });
+      if (angle === 'front') frontLocalPath = fwdResult.localPath;
+      console.log(`[createProduct] 📁 ${angle} → ${fwdResult.localPath} (${fwdResult.files_saved} file(s))`);
     }
 
-    // Upload product videos for AI training frame extraction.
+    // Forward product videos to vision server (frames extracted server-side on-the-fly)
     const videoFiles = files?.['video'] || [];
     for (const [index, videoFile] of videoFiles.entries()) {
-      const videoPath = `products/${createdProduct.id}/video-${Date.now()}-${index}-${videoFile.originalname}`;
-      const videoUpload = await productService.uploadImageToStorage(videoFile.buffer, videoPath, videoFile.mimetype);
-      if (videoUpload.ok && videoUpload.url) {
-        imageEntries.push({ angle: 'video', filename: videoFile.originalname, storagePath: videoPath, imageUrl: videoUpload.url });
-        console.log(`[createProduct] Video uploaded for training (${index + 1}/${videoFiles.length})`);
+      const fwdResult = await productService.forwardMediaToVisionServer(
+        videoFile.buffer, videoFile.originalname, videoFile.mimetype, aiClassName, 'video'
+      );
+      if (fwdResult.ok && fwdResult.localPath) {
+        imageEntries.push({ angle: 'video', filename: videoFile.originalname, storagePath: fwdResult.localPath, imageUrl: fwdResult.localPath });
+        console.log(`[createProduct] 🎥 Video ${index + 1}/${videoFiles.length} → ${fwdResult.files_saved} frames extracted`);
       } else {
-        console.warn('[createProduct] Failed to upload video:', videoUpload.error);
+        console.warn('[createProduct] Failed to forward video:', fwdResult.error);
       }
     }
 
-    // Update product image_url with front image's public URL
-    if (frontPublicUrl) {
-      await productService.updateProduct(createdProduct.id, { image_url: frontPublicUrl });
-      createdProduct.image_url = frontPublicUrl;
+    // Build a browser-accessible thumbnail URL pointing to the vision server
+    if (frontLocalPath) {
+      const [, classAndFile] = frontLocalPath.split('local://');
+      const thumbnailUrl = `${VISION_SERVER_URL}/dataset-image/${classAndFile}`;
+      await productService.updateProduct(createdProduct.id, { image_url: thumbnailUrl });
+      createdProduct.image_url = thumbnailUrl;
     }
 
     // Save all angle metadata to product_images table
@@ -178,14 +174,13 @@ export async function createProduct(req: Request, res: Response) {
           details: imgResult.error
         });
       }
-      console.log(`[createProduct] ✅ ${imageEntries.length} foto berhasil diupload & didaftarkan untuk produk: ${createdProduct.name}`);
+      console.log(`[createProduct] ✅ ${imageEntries.length} entry berhasil diforward & didaftarkan untuk produk: ${createdProduct.name}`);
     }
 
-    // Auto-trigger vision server sync so new product is immediately scannable
+    // Trigger vision server product cache refresh so new product is immediately scannable
     try {
-      const visionUrl = process.env.VISION_SERVER_URL || 'http://localhost:5002';
-      fetch(`${visionUrl}/sync`, { method: 'POST' }).catch(() => {});
-      console.log('[createProduct] 🔄 Vision server sync triggered');
+      fetch(`${VISION_SERVER_URL}/refresh-cache`, { method: 'POST' }).catch(() => {});
+      console.log('[createProduct] 🔄 Vision server cache refreshed');
     } catch {}
 
     return res.status(201).json({
@@ -228,7 +223,7 @@ export async function updateProductController(req: Request, res: Response) {
     if (files && Object.keys(files).length > 0) {
       const client = (await import('../../config/supabaseClient.js')).supabaseAdmin || (await import('../../config/supabaseClient.js')).supabase;
 
-      // Delete existing storage files + DB rows for a single angle (incl. its mirror)
+      // Delete existing DB rows + any Supabase Storage files for a single angle
       const replaceAngle = async (angleVal: string) => {
         const { data: olds } = await (client as any)
           .from('product_images').select('storage_path').eq('product_id', id).eq('angle', angleVal);
@@ -237,68 +232,65 @@ export async function updateProductController(req: Request, res: Response) {
         await (client as any).from('product_images').delete().eq('product_id', id).eq('angle', angleVal);
       };
 
-      // Upload new images (4 main angles)
+      // Fetch current ai_class_name for this product
+      const productData = await productService.getProductById(id);
+      const editAiClass = (productData.data?.ai_class_name as string) || id;
+
       const ANGLE_FIELDS = [
         { field: 'imageFront', angle: 'front' },
-        { field: 'imageBack', angle: 'back' },
-        { field: 'imageLeft', angle: 'left' },
+        { field: 'imageBack',  angle: 'back'  },
+        { field: 'imageLeft',  angle: 'left'  },
         { field: 'imageRight', angle: 'right' },
       ];
 
       const imageEntries: { angle: string; filename: string; storagePath: string; imageUrl: string }[] = [];
-      let frontPublicUrl: string | null = null;
+      let frontLocalPath: string | null = null;
 
       for (const { field, angle } of ANGLE_FIELDS) {
         const file = files[field]?.[0];
         if (!file) continue;
 
-        await replaceAngle(angle); // replace only this angle
+        await replaceAngle(angle);
 
-        const storagePath = `products/${id}/${angle}-${file.originalname}`;
-        const uploadResult = await productService.uploadImageToStorage(file.buffer, storagePath, file.mimetype);
-        if (!uploadResult.ok || !uploadResult.url) continue;
+        const fwdResult = await productService.forwardMediaToVisionServer(
+          file.buffer, file.originalname, file.mimetype, editAiClass, angle
+        );
+        if (!fwdResult.ok || !fwdResult.localPath) continue;
 
-        imageEntries.push({ angle, filename: file.originalname, storagePath, imageUrl: uploadResult.url });
-        if (angle === 'front') frontPublicUrl = uploadResult.url;
-
-        // Generate mirror
-        try {
-          const mirroredBuffer = await productService.mirrorImageBuffer(file.buffer, file.mimetype);
-          const mirrorStoragePath = `products/${id}/${angle}-mirror-${file.originalname}`;
-          const mirrorUpload = await productService.uploadImageToStorage(mirroredBuffer, mirrorStoragePath, file.mimetype);
-          if (mirrorUpload.ok && mirrorUpload.url) {
-            imageEntries.push({ angle, filename: `mirror-${file.originalname}`, storagePath: mirrorStoragePath, imageUrl: mirrorUpload.url });
-          }
-        } catch {}
+        imageEntries.push({ angle, filename: file.originalname, storagePath: fwdResult.localPath, imageUrl: fwdResult.localPath });
+        if (angle === 'front') frontLocalPath = fwdResult.localPath;
       }
 
-      // 3b. Upload product videos (optional on edit). Append, do not replace old videos.
+      // Append new videos (do not replace existing)
       const videoFiles = files['video'] || [];
       for (const [index, videoFile] of videoFiles.entries()) {
-        const videoPath = `products/${id}/video-${Date.now()}-${index}-${videoFile.originalname}`;
-        const videoUpload = await productService.uploadImageToStorage(videoFile.buffer, videoPath, videoFile.mimetype);
-        if (videoUpload.ok && videoUpload.url) {
-          imageEntries.push({ angle: 'video', filename: videoFile.originalname, storagePath: videoPath, imageUrl: videoUpload.url });
+        const fwdResult = await productService.forwardMediaToVisionServer(
+          videoFile.buffer, videoFile.originalname, videoFile.mimetype, editAiClass, 'video'
+        );
+        if (fwdResult.ok && fwdResult.localPath) {
+          imageEntries.push({ angle: 'video', filename: videoFile.originalname, storagePath: fwdResult.localPath, imageUrl: fwdResult.localPath });
+          console.log(`[updateProduct] 🎥 Video ${index + 1}/${videoFiles.length} → ${fwdResult.files_saved} frames`);
         }
       }
 
-      // 4. Update product image_url with front image
-      if (frontPublicUrl) {
-        await productService.updateProduct(id, { image_url: frontPublicUrl });
+      // Update thumbnail to vision server URL
+      if (frontLocalPath) {
+        const [, classAndFile] = frontLocalPath.split('local://');
+        const thumbnailUrl = `${VISION_SERVER_URL}/dataset-image/${classAndFile}`;
+        await productService.updateProduct(id, { image_url: thumbnailUrl });
       }
 
-      // 5. Insert new image records
+      // Insert new image records
       if (imageEntries.length > 0) {
         await productService.insertProductImages(id, imageEntries);
       }
 
-      // 6. Refresh vision product cache so changes apply without restart
+      // Refresh vision product cache
       try {
-        const visionUrl = process.env.VISION_SERVER_URL || 'http://localhost:5002';
-        fetch(`${visionUrl}/refresh-cache`, { method: 'POST' }).catch(() => {});
+        fetch(`${VISION_SERVER_URL}/refresh-cache`, { method: 'POST' }).catch(() => {});
       } catch {}
 
-      console.log(`[updateProduct] ✅ ${imageEntries.length} new images uploaded for product ${id}`);
+      console.log(`[updateProduct] ✅ ${imageEntries.length} new images forwarded to vision server for product ${id}`);
     }
 
     return res.json({ status: 'success', data: result.data });
@@ -314,7 +306,7 @@ export async function deleteProductController(req: Request, res: Response) {
   const productBeforeDelete = await productService.getProductById(id);
   const aiClassName = productBeforeDelete.ok ? productBeforeDelete.data?.ai_class_name : null;
 
-  // 1. Collect storage paths BEFORE deleting from DB (because deleteProduct removes product_images records)
+  // 1. Collect Supabase Storage paths BEFORE deleting from DB
   const storagePaths = await productService.getProductImagePaths(id);
 
   // 2. Delete product from DB (cascades to product_images, branch_inventory)
@@ -336,13 +328,13 @@ export async function deleteProductController(req: Request, res: Response) {
     return res.status(500).json({ status: 'error', error: errMsg });
   }
 
-  // 3. Delete files from Supabase Storage
+  // 3. Delete any remaining files from Supabase Storage (skips local:// paths automatically)
   await productService.deleteImagesFromStorage(storagePaths);
 
   // 3b. Delete local vision dataset folder for this product class
   const localDatasetDeleted = await deleteLocalProductDataset(aiClassName);
 
-  // 4. Also delete the entire product folder from storage
+  // 4. Also attempt to clean remaining Supabase Storage product folder
   try {
     const { supabaseAdmin, supabase } = await import('../../config/supabaseClient.js');
     const client: any = supabaseAdmin || supabase;
@@ -356,19 +348,18 @@ export async function deleteProductController(req: Request, res: Response) {
     console.warn('[deleteProduct] ⚠️ Folder cleanup failed:', e);
   }
 
-  // 5. Refresh vision product cache so the scanner forgets the deleted product
+  // 5. Refresh vision product cache
   try {
-    const visionUrl = process.env.VISION_SERVER_URL || 'http://localhost:5002';
-    fetch(`${visionUrl}/refresh-cache`, { method: 'POST' }).catch(() => {});
+    fetch(`${VISION_SERVER_URL}/refresh-cache`, { method: 'POST' }).catch(() => {});
   } catch {}
 
-  console.log(`[deleteProduct] ✅ Product ${id} deleted, ${storagePaths.length} file(s) removed from storage.`);
+  console.log(`[deleteProduct] ✅ Product ${id} deleted, ${storagePaths.length} Supabase file(s) removed.`);
   return res.json({ status: 'success', deletedFiles: storagePaths.length, localDatasetDeleted });
 }
 
 /**
  * POST /api/shared/products/background
- * Upload background media (empty-scene photos/videos) to Supabase Storage `background/`.
+ * Forward background media (empty-scene photos/videos) to the vision server to be stored locally.
  * Used as the 'background' training class so the scanner rejects non-products.
  */
 export async function uploadBackground(req: Request, res: Response) {
@@ -378,11 +369,14 @@ export async function uploadBackground(req: Request, res: Response) {
 
     let uploaded = 0;
     for (const f of files) {
-      const ts = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const path = `background/${ts}-${f.originalname}`;
-      const up = await productService.uploadImageToStorage(f.buffer, path, f.mimetype);
-      if (up.ok) uploaded++;
-      else console.warn('[uploadBackground] failed:', up.error);
+      const fwdResult = await productService.forwardMediaToVisionServer(
+        f.buffer, f.originalname, f.mimetype, 'background', 'bg'
+      );
+      if (fwdResult.ok) {
+        uploaded++;
+      } else {
+        console.warn('[uploadBackground] failed to forward background file:', fwdResult.error);
+      }
     }
     return res.json({ status: 'success', uploaded });
   } catch (err: any) {
@@ -397,27 +391,44 @@ export async function uploadBackground(req: Request, res: Response) {
  */
 export async function getBackground(_req: Request, res: Response) {
   try {
-    const { supabaseAdmin, supabase } = await import('../../config/supabaseClient.js');
-    const client: any = supabaseAdmin || supabase;
-    const { data } = await client.storage.from('product-images').list('background');
-    const files = (data || []).filter((f: any) => f.name !== '.emptyFolderPlaceholder');
-    return res.json({ status: 'success', count: files.length });
+    const resp = await fetch(`${VISION_SERVER_URL}/list-product-media/background`);
+    if (!resp.ok) {
+      throw new Error(`Vision server list-product-media returned status ${resp.status}`);
+    }
+    const data = await resp.json() as any;
+    return res.json({ status: 'success', count: data.count || 0 });
   } catch (err: any) {
-    return res.status(500).json({ status: 'error', error: err.message });
+    console.warn('[getBackground] Vision server error, falling back to local files:', err);
+    try {
+      const projectRoot = path.resolve(__dirname, '../../../..');
+      const bgDir = path.resolve(projectRoot, 'vision', 'dataset', 'products', 'background');
+      const files = await fs.readdir(bgDir).catch(() => []);
+      const imgFiles = files.filter(f => /\.(jpe?g|png)$/i.test(f));
+      return res.json({ status: 'success', count: imgFiles.length });
+    } catch (e: any) {
+      return res.status(500).json({ status: 'error', error: err.message });
+    }
   }
 }
 
 export async function clearBackground(_req: Request, res: Response) {
   try {
-    const { supabaseAdmin, supabase } = await import('../../config/supabaseClient.js');
-    const client: any = supabaseAdmin || supabase;
-    const { data } = await client.storage.from('product-images').list('background');
-    const paths = (data || [])
-      .filter((f: any) => f.name !== '.emptyFolderPlaceholder')
-      .map((f: any) => `background/${f.name}`);
-    if (paths.length) await client.storage.from('product-images').remove(paths);
-    return res.json({ status: 'success', removed: paths.length });
+    const resp = await fetch(`${VISION_SERVER_URL}/delete-product-media?ai_class_name=background`, { method: 'DELETE' });
+    if (!resp.ok) {
+      throw new Error(`Vision server delete-product-media returned status ${resp.status}`);
+    }
+    const data = await resp.json() as any;
+    return res.json({ status: 'success', removed: data.success ? 1 : 0 });
   } catch (err: any) {
-    return res.status(500).json({ status: 'error', error: err.message });
+    console.warn('[clearBackground] Vision server error, falling back to local files:', err);
+    try {
+      const projectRoot = path.resolve(__dirname, '../../../..');
+      const bgDir = path.resolve(projectRoot, 'vision', 'dataset', 'products', 'background');
+      await fs.rm(bgDir, { recursive: true, force: true }).catch(() => {});
+      await fs.mkdir(bgDir, { recursive: true }).catch(() => {});
+      return res.json({ status: 'success', removed: 1 });
+    } catch (e: any) {
+      return res.status(500).json({ status: 'error', error: err.message });
+    }
   }
 }

@@ -1,0 +1,28 @@
+# AutoCashier Vision Server — Inference-Only Dependencies
+# Install: pip install -r requirements_serve.txt
+#
+# This is a LIGHTWEIGHT requirements file for the cashier/serving laptop.
+# It does NOT include training libraries (datasets, accelerate, scikit-learn).
+# Use requirements.txt on the training laptop instead.
+
+# --- Core inference ---
+torch
+torchvision
+transformers
+pillow
+numpy
+
+# --- Vision Server runtime ---
+fastapi
+uvicorn
+python-multipart
+opencv-python
+ultralytics
+
+# --- OCR verification ---
+easyocr
+rapidfuzz
+
+# --- Database & config ---
+supabase
+python-dotenv

@@ -344,7 +344,6 @@ export async function evaluationReport(_req: Request, res: Response): Promise<vo
 }
 
 /**
- * POST /api/kasir/detect-v2
  * Proxy endpoint to FastAPI Vision Server /detect-v2 with YOLO-World and ResNet-50.
  */
 export async function detectV2(req: Request, res: Response): Promise<void> {
@@ -387,5 +386,70 @@ export async function detectV2(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('[DETECT-V2] Detection endpoint error:', error);
     res.status(500).json({ success: false, message: 'Detection system error' });
+  }
+}
+
+/**
+ * POST /api/kasir/vision/sync-model
+ * Trigger vision server model sync (download from cloud and reload).
+ */
+export async function syncModel(req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SYNC_TIMEOUT_SHORT);
+
+    const visionRes = await fetch(`${VISION_SERVER_URL}/sync-model`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await visionRes.json();
+    res.status(visionRes.status).json(data);
+  } catch (err: any) {
+    res.status(503).json({ success: false, message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+/**
+ * GET /api/kasir/vision/sync-model-status
+ * Poll the current model sync status from the Vision Server.
+ */
+export async function syncModelStatus(_req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT);
+
+    const visionRes = await fetch(`${VISION_SERVER_URL}/sync-model-status`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await visionRes.json();
+    res.status(visionRes.status).json(data);
+  } catch (err: any) {
+    res.status(503).json({ state: 'offline', message: `Vision server unreachable: ${err.message}` });
+  }
+}
+
+/**
+ * GET /api/kasir/vision/model-version
+ * Get local and cloud model version/metadata info.
+ */
+export async function modelVersion(_req: Request, res: Response): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT);
+
+    const visionRes = await fetch(`${VISION_SERVER_URL}/model-version`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await visionRes.json();
+    res.status(visionRes.status).json(data);
+  } catch (err: any) {
+    res.status(503).json({ success: false, message: `Vision server unreachable: ${err.message}` });
   }
 }
