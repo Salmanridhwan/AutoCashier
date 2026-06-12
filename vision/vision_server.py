@@ -107,6 +107,12 @@ def load_models():
     # 3. Load ResNet-50 Classifier
     try:
         model_dir = os.environ.get("MODEL_DIR", "models/resnet50-product-classifier")
+        if not os.path.exists(os.path.join(model_dir, "config.json")):
+            print("[STARTUP] Local model not found. Attempting to auto-download from cloud...")
+            try:
+                _download_model_from_cloud()
+            except Exception as cloud_err:
+                print(f"[STARTUP] Could not auto-download model from cloud: {cloud_err}")
         resnet_classifier = ResNet50ProductClassifier(model_dir)
         print("[STARTUP] ResNet-50 Classifier loaded successfully.")
     except Exception as e:
